@@ -1,21 +1,33 @@
-module Phoenix exposing (connect)
+module Phoenix exposing (connect, update, join)
 
 {-|
 # Basic Usage
 
-@docs connect
+@docs connect, update, join
 -}
 
 import Phoenix.Socket as Socket exposing(Socket)
 import Phoenix.Channel exposing(Channel)
+import Phoenix.Message exposing(Msg)
 
-
-type Msg msg
-    = NoOp
-    | ExternalMsg msg
 {-|
 What t?
 -}
-connect : Socket msg -> (String -> msg) -> Sub msg
+connect : Socket msg -> (Msg msg -> msg) -> Sub msg
 connect socket fn =
     Socket.listen socket fn
+
+
+{-|
+update
+-}
+update: Msg msg -> Socket msg -> (Socket msg, Cmd (Msg msg))
+update msg socket =
+    (socket , Cmd.none)
+
+{-|
+join
+-}
+join: Channel msg -> Socket msg -> (Socket msg, Cmd (Msg msg))
+join channel socket =
+    Socket.join channel socket
