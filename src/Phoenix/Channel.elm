@@ -1,4 +1,4 @@
-module Phoenix.Channel exposing (init, on, receive, Channel, isOngoing, setJoiningState, setJoinedState, findChannelWithRef, findChannel, updateChannelDict)
+module Phoenix.Channel exposing (init, on, onError, onJoin, Channel, isOngoing, setJoiningState, setJoinedState, findChannelWithRef, findChannel, updateChannelDict)
 
 {-|
 # Basic Usage
@@ -45,8 +45,16 @@ on event cb channel =
 
 
 receive : String -> (Value -> msg) -> Channel msg -> Channel msg
-receive event cb channel =
-    { channel | receive = Dict.insert event cb channel.receive }
+receive event valueToMsg channel =
+    { channel | receive = Dict.insert event valueToMsg channel.receive }
+
+onJoin : (Value -> msg) -> Channel msg -> Channel msg
+onJoin valueToMsg channel =
+    receive "ok" valueToMsg channel
+
+onError : (Value -> msg) -> Channel msg -> Channel msg
+onError valueToMsg channel =
+    receive "error" valueToMsg channel
 
 
 {-|
