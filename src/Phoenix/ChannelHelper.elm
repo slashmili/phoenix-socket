@@ -7,24 +7,20 @@ import Task
 import Dict
 
 
-onReceiveMsg : String -> Decode.Value -> Channel msg -> Cmd msg
+onReceiveMsg : String -> Decode.Value -> Channel msg -> Msg msg
 onReceiveMsg name response channel =
     case Dict.get name channel.receive of
         Just cmd ->
-            cmd response
-                |> Task.succeed
-                |> Task.perform identity
-
+            ExternalMsg (cmd response)
         _ ->
-            Cmd.none
+            Message.none
 
 
-onJoinedCommand : Decode.Value -> Channel msg -> Cmd msg
+onJoinedCommand : Decode.Value -> Channel msg -> Msg msg
 onJoinedCommand response channel =
     onReceiveMsg "ok" response channel
 
-
-onFailedToJoinCommand : Decode.Value -> Channel msg -> Cmd msg
+onFailedToJoinCommand : Decode.Value -> Channel msg -> Msg msg
 onFailedToJoinCommand response channel =
     onReceiveMsg "error" response channel
 

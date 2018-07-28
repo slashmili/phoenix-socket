@@ -1,9 +1,9 @@
-module Phoenix exposing (connect, update, join)
+module Phoenix exposing (listen, update, join)
 
 {-|
 # Basic Usage
 
-@docs connect, update, join
+@docs listen, update, join
 -}
 
 import Phoenix.Socket as Socket exposing(Socket)
@@ -13,8 +13,8 @@ import Phoenix.Message as Message exposing(Msg)
 {-|
 What t?
 -}
-connect : Socket msg -> (Msg msg -> msg) -> Sub msg
-connect socket toExternalAppMsgFn =
+listen : (Msg msg -> msg) -> Socket msg ->  Sub msg
+listen toExternalAppMsgFn socket  =
     Socket.listen socket toExternalAppMsgFn
 
 

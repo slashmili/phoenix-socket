@@ -80,7 +80,17 @@ mapExternalEvents : Socket msg -> Event -> Msg msg
 mapExternalEvents socket event =
     case event.event of
         "phx_reply" ->
-            Message.none
+            case Channel.findChannelWithRef event.topic event.ref socket.channels of
+                Just channel ->
+                    case Event.decodeReply event.payload of
+                        Ok response ->
+                            ChannelHelper.onJoinedCommand response channel
+
+                        Err response ->
+                            ChannelHelper.onFailedToJoinCommand response channel
+
+                Nothing ->
+                    Message.none
         "phx_error" ->
             Message.none
         "phx_close" ->
@@ -213,7 +223,7 @@ update toExternalAppMsgFn msg socket =
                 updateSocket =
                     { socket | channels = Channel.updateChannelDict updatedChannel socket.channels }
             in
-                ( updateSocket, ChannelHelper.onJoinedCommand response updatedChannel )
+                ( updateSocket, Cmd.none)
 
         ChannelFailedToJoin channel response ->
             let
@@ -223,7 +233,7 @@ update toExternalAppMsgFn msg socket =
                 updateSocket =
                     { socket | channels = Channel.updateChannelDict updatedChannel socket.channels }
             in
-                ( updateSocket, ChannelHelper.onFailedToJoinCommand response updatedChannel )
+                ( updateSocket, Cmd.none)
 
         _ ->
             ( socket, Cmd.none )
