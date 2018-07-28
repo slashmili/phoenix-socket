@@ -1,4 +1,4 @@
-module Phoenix.Channel exposing (init, on, receive, Channel, isOngoing, setJoiningState, setJoinedState, findChannel, updateChannelDict)
+module Phoenix.Channel exposing (init, on, receive, Channel, isOngoing, setJoiningState, setJoinedState, findChannelWithRef, findChannel, updateChannelDict)
 
 {-|
 # Basic Usage
@@ -75,11 +75,10 @@ updateChannelDict channel channels =
     Dict.insert channel.topic channel channels
 
 
-{-|
-Maybe change into to MapChannel or something
+{-| Something
 -}
-findChannel : String -> Maybe Int -> Dict String (Channel msg) -> Maybe (Channel msg)
-findChannel topic joinRef channels =
+findChannelWithRef : String -> Maybe Int -> Dict String (Channel msg) -> Maybe (Channel msg)
+findChannelWithRef topic joinRef channels =
     case Dict.get topic channels of
         Just channel ->
             if channel.joinRef == joinRef then
@@ -90,3 +89,8 @@ findChannel topic joinRef channels =
         _ ->
             Nothing
 
+{-| Something
+-}
+findChannel : String -> Dict String (Channel msg) -> Maybe (Channel msg)
+findChannel topic channels =
+    Dict.get topic channels

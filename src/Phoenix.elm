@@ -28,6 +28,9 @@ update toExternalAppMsgFn msg socket =
 {-|
 join
 -}
-join: Channel msg -> Socket msg -> (Socket msg, Cmd (Msg msg))
-join channel socket =
-    Socket.join channel socket
+join: (Msg msg -> msg) -> Channel msg -> Socket msg -> (Socket msg, Cmd msg)
+join toExternalAppMsgFn channel socket =
+    let
+        (updateSocket, phxCmd) = Socket.join channel socket
+    in
+       (updateSocket, Cmd.map toExternalAppMsgFn phxCmd)

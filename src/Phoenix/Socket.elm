@@ -49,21 +49,49 @@ init endPoint =
 {-| What ever
 -}
 listen : Socket msg -> (Msg msg -> msg) -> Sub msg
-listen socket fn =
+listen socket toExternalAppMsgFn =
     let
         mappedMsg =
-            Message.mapAll fn
+            Message.mapAll toExternalAppMsgFn
 
         subs =
-            Sub.batch [ internalMsgs socket ]
+            Sub.batch
+                [ internalMsgs socket
+                , externalMsgs socket
+                ]
     in
         Sub.map mappedMsg subs
 
 
+externalMsgs : Socket msg -> Sub (Msg msg)
+externalMsgs socket =
+    Sub.map (mapMaybeExternalEvents socket) (phoenixMessages socket)
 
---  (Sub.batch >> mapper)
---   [ internalMsgs socket ]
--- WebSocket.listen socket.endPoint Message.decodeEvent
+mapMaybeExternalEvents : Socket msg -> Maybe Event -> Msg msg
+mapMaybeExternalEvents socket maybeEvent=
+    case maybeEvent of
+        Just event ->
+            mapExternalEvents socket event
+        Nothing ->
+            Message.none
+
+
+mapExternalEvents : Socket msg -> Event -> Msg msg
+mapExternalEvents socket event =
+    case event.event of
+        "phx_reply" ->
+            Message.none
+        "phx_error" ->
+            Message.none
+        "phx_close" ->
+            Message.none
+
+        _ ->
+            case Channel.findChannel event.topic socket.channels of
+                Just channel ->
+                    ChannelHelper.onCustomCommand event.event event.payload  channel
+                _ ->
+                    Message.none
 
 
 internalMsgs : Socket msg -> Sub (Msg msg)
@@ -94,7 +122,7 @@ mapInternalEvents socket event =
 
 handleInternalPhxReply : Socket msg -> Event -> Msg msg
 handleInternalPhxReply socket event =
-    case Channel.findChannel event.topic event.ref socket.channels of
+    case Channel.findChannelWithRef event.topic event.ref socket.channels of
         Just channel ->
             case Event.decodeReply event.payload of
                 Ok response ->
@@ -186,6 +214,7 @@ update toExternalAppMsgFn msg socket =
                     { socket | channels = Channel.updateChannelDict updatedChannel socket.channels }
             in
                 ( updateSocket, ChannelHelper.onJoinedCommand response updatedChannel )
+
         ChannelFailedToJoin channel response ->
             let
                 updatedChannel =
@@ -195,7 +224,6 @@ update toExternalAppMsgFn msg socket =
                     { socket | channels = Channel.updateChannelDict updatedChannel socket.channels }
             in
                 ( updateSocket, ChannelHelper.onFailedToJoinCommand response updatedChannel )
-
 
         _ ->
             ( socket, Cmd.none )
