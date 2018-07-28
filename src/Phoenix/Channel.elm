@@ -1,9 +1,9 @@
-module Phoenix.Channel exposing (init, on, Channel, isOngoing, setJoiningState)
+module Phoenix.Channel exposing (init, on, receive, Channel, isOngoing, setJoiningState, setJoinedState, findChannel, updateChannelDict)
 
 {-|
 # Basic Usage
 
-@docs init, on, isOngoing, setJoiningState
+@docs init, on, isOngoing, setJoiningState, findChannel
 
 -}
 
@@ -17,11 +17,13 @@ type State
     | Joined
     | Joining
 
+
 type alias Channel msg =
     { topic : String
     , on : Dict String (Value -> msg)
     , state : State
     , joinRef : Maybe Int
+    , receive : Dict String (Value -> msg)
     , payload : Encode.Value
     }
 
@@ -32,12 +34,20 @@ init topic =
     , on = Dict.empty
     , state = Init
     , joinRef = Nothing
+    , receive = Dict.empty
     , payload = Encode.object []
     }
 
+
 on : String -> (Value -> msg) -> Channel msg -> Channel msg
-on event cb channel=
+on event cb channel =
     { channel | on = Dict.insert event cb channel.on }
+
+
+receive : String -> (Value -> msg) -> Channel msg -> Channel msg
+receive event cb channel =
+    { channel | receive = Dict.insert event cb channel.receive }
+
 
 {-|
 Return true if connection has joined the channel or is joining
@@ -45,10 +55,38 @@ Return true if connection has joined the channel or is joining
 isOngoing : Channel msg -> Bool
 isOngoing channel =
     if channel.state == Joining || channel.state == Joined then
-       True
-   else
-       False
+        True
+    else
+        False
 
-setJoiningState: Int -> Channel msg -> Channel msg
+
+setJoiningState : Int -> Channel msg -> Channel msg
 setJoiningState ref channel =
-    {channel | state = Joining, joinRef = Just ref}
+    { channel | state = Joining, joinRef = Just ref }
+
+
+setJoinedState : Channel msg -> Channel msg
+setJoinedState channel =
+    { channel | state = Joined, joinRef = Nothing }
+
+
+updateChannelDict : Channel msg -> Dict String (Channel msg) -> Dict String (Channel msg)
+updateChannelDict channel channels =
+    Dict.insert channel.topic channel channels
+
+
+{-|
+Maybe change into to MapChannel or something
+-}
+findChannel : String -> Maybe Int -> Dict String (Channel msg) -> Maybe (Channel msg)
+findChannel topic joinRef channels =
+    case Dict.get topic channels of
+        Just channel ->
+            if channel.joinRef == joinRef then
+                Just channel
+            else
+                Nothing
+
+        _ ->
+            Nothing
+

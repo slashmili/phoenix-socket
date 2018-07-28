@@ -1,16 +1,18 @@
-module Phoenix.Socket exposing (init, Socket, listen, join)
+module Phoenix.Socket exposing (init, Socket, listen, join, update)
 
 {-|
 # Basic Usage
 
-@docs init, Socket, listen, join
+@docs init, Socket, listen, join, update
 
 -}
 
 import Phoenix.Channel as Channel exposing (Channel)
-import Phoenix.Message as Message exposing (Msg)
+import Phoenix.ChannelHelper as ChannelHelper
+import Phoenix.Message as Message exposing (Msg(..))
 import Phoenix.Event as Event exposing (Event)
 import Dict exposing (Dict)
+import Task exposing (Task)
 import WebSocket
 import Json.Encode as Encode
 
@@ -66,27 +68,42 @@ listen socket fn =
 
 internalMsgs : Socket msg -> Sub (Msg msg)
 internalMsgs socket =
-    Sub.map (mapInternalMsgs socket) (phoenixMessages socket)
+    Sub.map (mapMaybeInternalEvents socket) (phoenixMessages socket)
 
 
-mapInternalMsgs : Socket msg -> Maybe Event -> Msg msg
-mapInternalMsgs socket maybeEvent =
+mapMaybeInternalEvents : Socket msg -> Maybe Event -> Msg msg
+mapMaybeInternalEvents socket maybeEvent =
     case maybeEvent of
         Just event ->
-            case event.event of
-                "phx_reply" ->
-                    let
-                        _ =
-                            Debug.log "phx_reply" event
+            mapInternalEvents socket event
 
-                        -- phx_reply: { event = "phx_reply", topic = "numbers:positive", payload = { status = "ok", response = { mynameis = "milad" } } }
-                    in
-                        Message.none
+        Nothing ->
+            Message.none
 
-                _ ->
-                    Message.none
+
+mapInternalEvents : Socket msg -> Event -> Msg msg
+mapInternalEvents socket event =
+    case event.event of
+        -- phx_reply: { event = "phx_reply", topic = "numbers:positive", payload = { status = "ok", response = { mynameis = "milad" } }, ref = Just 1 }
+        "phx_reply" ->
+            handleInternalPhxReply socket event
 
         _ ->
+            Message.none
+
+
+handleInternalPhxReply : Socket msg -> Event -> Msg msg
+handleInternalPhxReply socket event =
+    case Channel.findChannel event.topic event.ref socket.channels of
+        Just channel ->
+            case Event.decodeReply event.payload of
+                Ok response ->
+                    Message.channelSuccessfullyJoined channel response
+
+                Err response ->
+                    Message.channelFailedToJoin channel response
+
+        Nothing ->
             Message.none
 
 
@@ -118,13 +135,12 @@ join channel socket =
 doJoin : Channel msg -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
 doJoin channel socket =
     let
-        channel_ =
+        updatedChannel =
             Channel.setJoiningState socket.ref channel
-
-        socket_ =
-            addChannel channel socket
     in
-        pushEvent "phx_join" channel_ socket_
+        socket
+            |> addChannel updatedChannel
+            |> pushEvent "phx_join" updatedChannel
 
 
 pushEvent : String -> Channel msg -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
@@ -133,10 +149,10 @@ pushEvent eventName channel socket =
         event =
             Event.init eventName channel.topic channel.payload (Just socket.ref)
 
-        socket_ =
+        updateSocket =
             addEvent event socket
     in
-        ( socket
+        ( updateSocket
         , send socket event.event event.topic event.payload
         )
 
@@ -154,3 +170,22 @@ sendMessage path message =
 addEvent : Event -> Socket msg -> Socket msg
 addEvent event socket =
     { socket | pushedEvents = Dict.insert socket.ref event socket.pushedEvents, ref = socket.ref + 1 }
+
+
+{-| update
+-}
+update : (Msg msg -> msg) -> Msg msg -> Socket msg -> ( Socket msg, Cmd msg )
+update toExternalAppMsgFn msg socket =
+    case msg of
+        ChannelSuccessfullyJoined channel response ->
+            let
+                updatedChannel =
+                    Channel.setJoinedState (channel)
+
+                updateSocket =
+                    { socket | channels = Channel.updateChannelDict updatedChannel socket.channels }
+            in
+                ( updateSocket, ChannelHelper.onJoinedCommand response updatedChannel )
+
+        _ ->
+            ( socket, Cmd.none )
