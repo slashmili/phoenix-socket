@@ -186,6 +186,16 @@ update toExternalAppMsgFn msg socket =
                     { socket | channels = Channel.updateChannelDict updatedChannel socket.channels }
             in
                 ( updateSocket, ChannelHelper.onJoinedCommand response updatedChannel )
+        ChannelFailedToJoin channel response ->
+            let
+                updatedChannel =
+                    Channel.setJoinedState (channel)
+
+                updateSocket =
+                    { socket | channels = Channel.updateChannelDict updatedChannel socket.channels }
+            in
+                ( updateSocket, ChannelHelper.onFailedToJoinCommand response updatedChannel )
+
 
         _ ->
             ( socket, Cmd.none )
