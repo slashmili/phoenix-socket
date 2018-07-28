@@ -1,4 +1,4 @@
-module Phoenix.Message exposing (Msg(..), mapAll, none, channelSuccessfullyJoined, channelFailedToJoin, cmdMap)
+module Phoenix.Message exposing (Msg(..), mapAll, none, channelSuccessfullyJoined, channelFailedToJoin, channelClosed, channelError, cmdMap)
 
 import Json.Decode as Decode
 import Phoenix.Channel exposing (Channel)
@@ -9,6 +9,8 @@ type Msg msg
     | ExternalMsg msg
     | ChannelSuccessfullyJoined (Channel msg) Decode.Value
     | ChannelFailedToJoin (Channel msg) Decode.Value
+    | ChannelClosed (Channel msg) Decode.Value
+    | ChannelError (Channel msg) Decode.Value
 
 
 mapAll : (Msg msg -> msg) -> Msg msg -> msg
@@ -37,3 +39,11 @@ channelSuccessfullyJoined channel response =
 channelFailedToJoin : Channel msg -> Decode.Value -> Msg msg
 channelFailedToJoin channel response =
     ChannelFailedToJoin channel response
+
+channelClosed : Decode.Value -> Channel msg -> Msg msg
+channelClosed response channel=
+    ChannelClosed channel response
+
+channelError : Decode.Value -> Channel msg -> Msg msg
+channelError response channel=
+    ChannelError channel response

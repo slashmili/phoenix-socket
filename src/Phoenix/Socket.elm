@@ -134,13 +134,28 @@ mapMaybeInternalEvents socket maybeEvent =
 
 mapInternalEvents : Socket msg -> Event -> Msg msg
 mapInternalEvents socket event =
-    case event.event of
-        -- phx_reply: { event = "phx_reply", topic = "numbers:positive", payload = { status = "ok", response = { mynameis = "milad" } }, ref = Just 1 }
-        "phx_reply" ->
-            handleInternalPhxReply socket event
+    let
+        channel =
+            Channel.findChannel event.topic
+    in
+        case event.event of
+            "phx_reply" ->
+                handleInternalPhxReply socket event
 
-        _ ->
-            Message.none
+            "phx_close" ->
+                socket.channels
+                    |> channel
+                    |> Maybe.andThen (\chan -> Just (Message.channelClosed event.payload chan))
+                    |> Maybe.withDefault Message.none
+
+            "phx_error" ->
+                socket.channels
+                    |> channel
+                    |> Maybe.andThen (\chan -> Just (Message.channelError event.payload chan))
+                    |> Maybe.withDefault Message.none
+
+            _ ->
+                Message.none
 
 
 handleInternalPhxReply : Socket msg -> Event -> Msg msg
