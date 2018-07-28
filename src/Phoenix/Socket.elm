@@ -67,41 +67,54 @@ externalMsgs : Socket msg -> Sub (Msg msg)
 externalMsgs socket =
     Sub.map (mapMaybeExternalEvents socket) (phoenixMessages socket)
 
+
 mapMaybeExternalEvents : Socket msg -> Maybe Event -> Msg msg
-mapMaybeExternalEvents socket maybeEvent=
+mapMaybeExternalEvents socket maybeEvent =
     case maybeEvent of
         Just event ->
             mapExternalEvents socket event
+
         Nothing ->
             Message.none
 
 
 mapExternalEvents : Socket msg -> Event -> Msg msg
 mapExternalEvents socket event =
-    case event.event of
-        "phx_reply" ->
-            case Channel.findChannelWithRef event.topic event.ref socket.channels of
-                Just channel ->
-                    case Event.decodeReply event.payload of
-                        Ok response ->
-                            ChannelHelper.onJoinedCommand response channel
+    let
+        channelWithRef =
+            Channel.findChannelWithRef event.topic event.ref
 
-                        Err response ->
-                            ChannelHelper.onFailedToJoinCommand response channel
+        channel =
+            Channel.findChannel event.topic
+    in
+        case event.event of
+            "phx_reply" ->
+                case channelWithRef socket.channels of
+                    Just chan ->
+                        case Event.decodeReply event.payload of
+                            Ok response ->
+                                ChannelHelper.onJoinedCommand response chan
 
-                Nothing ->
-                    Message.none
-        "phx_error" ->
-            Message.none
-        "phx_close" ->
-            Message.none
+                            Err response ->
+                                ChannelHelper.onFailedToJoinCommand response chan
 
-        _ ->
-            case Channel.findChannel event.topic socket.channels of
-                Just channel ->
-                    ChannelHelper.onCustomCommand event.event event.payload  channel
-                _ ->
-                    Message.none
+                    Nothing ->
+                        Message.none
+
+            "phx_error" ->
+                Message.none
+
+            "phx_close" ->
+                socket.channels
+                    |> channelWithRef
+                    |> Maybe.andThen (\chan -> Just (ChannelHelper.onClosedCommand event.payload chan))
+                    |> Maybe.withDefault Message.none
+
+            _ ->
+                socket.channels
+                    |> channel
+                    |> Maybe.andThen (\chan -> Just (ChannelHelper.onCustomCommand event.event event.payload chan))
+                    |> Maybe.withDefault Message.none
 
 
 internalMsgs : Socket msg -> Sub (Msg msg)
@@ -223,7 +236,7 @@ update toExternalAppMsgFn msg socket =
                 updateSocket =
                     { socket | channels = Channel.updateChannelDict updatedChannel socket.channels }
             in
-                ( updateSocket, Cmd.none)
+                ( updateSocket, Cmd.none )
 
         ChannelFailedToJoin channel response ->
             let
@@ -233,7 +246,7 @@ update toExternalAppMsgFn msg socket =
                 updateSocket =
                     { socket | channels = Channel.updateChannelDict updatedChannel socket.channels }
             in
-                ( updateSocket, Cmd.none)
+                ( updateSocket, Cmd.none )
 
         _ ->
             ( socket, Cmd.none )

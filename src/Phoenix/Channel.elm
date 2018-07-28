@@ -1,4 +1,4 @@
-module Phoenix.Channel exposing (init, on, onError, onJoin, Channel, isOngoing, setJoiningState, setJoinedState, findChannelWithRef, findChannel, updateChannelDict)
+module Phoenix.Channel exposing (init, on, onClose, onError, onJoin, Channel, isOngoing, setJoiningState, setJoinedState, findChannelWithRef, findChannel, updateChannelDict)
 
 {-|
 # Basic Usage
@@ -55,6 +55,10 @@ onJoin valueToMsg channel =
 onError : (Value -> msg) -> Channel msg -> Channel msg
 onError valueToMsg channel =
     receive "error" valueToMsg channel
+
+onClose : (Value -> msg) -> Channel msg -> Channel msg
+onClose valueToMsg channel =
+    receive "close" valueToMsg channel
 
 
 {-|

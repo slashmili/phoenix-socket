@@ -1,4 +1,4 @@
-module Phoenix.ChannelHelper exposing (onJoinedCommand, onFailedToJoinCommand, onCustomCommand)
+module Phoenix.ChannelHelper exposing (onJoinedCommand, onFailedToJoinCommand, onCustomCommand, onClosedCommand)
 
 import Phoenix.Channel as Channel exposing (Channel)
 import Phoenix.Message as Message exposing (Msg(..))
@@ -23,6 +23,10 @@ onJoinedCommand response channel =
 onFailedToJoinCommand : Decode.Value -> Channel msg -> Msg msg
 onFailedToJoinCommand response channel =
     onReceiveMsg "error" response channel
+
+onClosedCommand : Decode.Value -> Channel msg -> Msg msg
+onClosedCommand response channel =
+    onReceiveMsg "close" response channel
 
 
 onCustomCommand : String -> Decode.Value -> Channel msg -> Msg msg
