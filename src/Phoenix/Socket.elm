@@ -102,7 +102,10 @@ mapExternalEvents socket event =
                         Message.none
 
             "phx_error" ->
-                Message.none
+                socket.channels
+                    |> channelWithRef
+                    |> Maybe.andThen (\chan -> Just (ChannelHelper.onErrorCommand event.payload chan))
+                    |> Maybe.withDefault Message.none
 
             "phx_close" ->
                 socket.channels

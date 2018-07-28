@@ -5,6 +5,7 @@ module Phoenix.Channel
         , on
         , onClose
         , onError
+        , onJoinError
         , onJoin
         , isOngoing
         , setJoiningState
@@ -28,8 +29,12 @@ import Dict exposing (Dict)
 
 type State
     = Init
+    | Closed
+    | Errored
     | Joined
     | Joining
+    | Leaving
+
 
 
 type alias Channel msg =
@@ -67,6 +72,10 @@ onJoin : (Value -> msg) -> Channel msg -> Channel msg
 onJoin valueToMsg channel =
     receive "ok" valueToMsg channel
 
+
+onJoinError : (Value -> msg) -> Channel msg -> Channel msg
+onJoinError valueToMsg channel =
+    receive "join_error" valueToMsg channel
 
 onError : (Value -> msg) -> Channel msg -> Channel msg
 onError valueToMsg channel =
