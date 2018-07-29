@@ -177,9 +177,17 @@ update toExternalAppMsgFn msg socket =
         LongPollPolled (Ok longPollEvent) ->
             case longPollEvent.status of
                 200 ->
-                    -- TODO: got content!
-                    ({socket | readyState = Closed}, Cmd.none)
-
+                    let
+                        command =
+                            case longPollEvent.messages of
+                                Just [] ->
+                                    Cmd.none
+                                Nothing ->
+                                    Cmd.none
+                                Just messsages ->
+                                    LongPoll.externalMsgs socket.channels toExternalAppMsgFn messsages
+                    in
+                       ({socket | readyState = Closed}, command)
                 401 ->
                     -- TODO: send onJoinError Msg
                     (socket, Cmd.none)

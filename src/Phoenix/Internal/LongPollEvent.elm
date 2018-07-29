@@ -1,16 +1,19 @@
 module Phoenix.Internal.LongPollEvent exposing (..)
 
 
-import Json.Decode as Decode exposing (field)
+import Phoenix.Event as Event exposing(Event)
+import Json.Decode as Decode exposing (Decoder, field, maybe, int, string, list, map3)
 
 type alias LongPollEvent =
     { status : Int
     , token : Maybe String
+    , messages: Maybe (List Event)
     }
 
 
-longPolldecoder : Decode.Decoder LongPollEvent
+longPolldecoder : Decoder LongPollEvent
 longPolldecoder =
-    Decode.map2 LongPollEvent
-        (field "status" Decode.int)
-        (field "token" (Decode.maybe Decode.string))
+    map3 LongPollEvent
+        (field "status" int)
+        (maybe (field "token" (string)))
+        (maybe (field "messages" (list Event.decoder)))
