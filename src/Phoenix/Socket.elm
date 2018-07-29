@@ -13,9 +13,11 @@ import Phoenix.Message as Message exposing (Msg(..))
 import Phoenix.Event as Event exposing (Event)
 import Phoenix.Push as Push exposing (Push)
 import Phoenix.Internal.WebSocket as InternalWebSocket
+import Phoenix.Internal.LongPoll as LongPoll
 import Dict exposing (Dict)
 import Task exposing (Task)
 import Json.Encode as Encode
+import Time exposing (Time, second)
 
 
 type Transport
@@ -23,9 +25,11 @@ type Transport
     | LongPoll
 
 
-type Status
-    = Diconnected
-    | Connected
+type State
+    = Connecting
+    | Open
+    | Closing
+    | Closed
 
 
 {-| Socket options
@@ -35,8 +39,9 @@ type alias Socket msg =
     , transport : Transport
     , channels : Dict String (Channel msg)
     , pushedEvents : Dict Int Event
-    , status : Status
+    , readyState : State
     , ref : Int
+    , longPollToken : Maybe String
     }
 
 
@@ -49,8 +54,9 @@ init endPoint =
     , transport = WebSocket
     , channels = Dict.empty
     , pushedEvents = Dict.empty
-    , status = Diconnected
+    , readyState = Closed
     , ref = 1
+    , longPollToken = Nothing
     }
 
 
@@ -72,7 +78,17 @@ listen socket toExternalAppMsgFn =
         WebSocket ->
             InternalWebSocket.listen socket.endPoint socket.channels toExternalAppMsgFn
         LongPoll ->
-            Sub.map toExternalAppMsgFn Sub.none
+            let
+                freq =
+                    case socket.readyState of
+                        Closed ->
+                            second
+                        Open ->
+                            (5 * second)
+                        _ ->
+                            (10 * second)
+            in
+            Sub.map toExternalAppMsgFn (Time.every freq LongPollTick)
 
 
 addChannel : Channel msg -> Socket msg -> Socket msg
@@ -114,7 +130,7 @@ doJoin channel socket =
            WebSocket ->
                (updateSocket, InternalWebSocket.send socket.endPoint event)
            LongPoll ->
-               (updateSocket, Cmd.none)
+               (updateSocket, LongPoll.send socket.endPoint socket.longPollToken event)
 
 
 addEvent : Event -> Socket msg -> Socket msg
@@ -147,12 +163,43 @@ update toExternalAppMsgFn msg socket =
             in
                 ( updateSocket, Cmd.none )
 
+        LongPollTick _ ->
+            case socket.readyState of
+                Open ->
+                    ({socket| readyState= Connecting}, Cmd.map toExternalAppMsgFn (LongPoll.poll socket.endPoint socket.longPollToken))
+                Connecting ->
+                    (socket, Cmd.none)
+                Closing ->
+                    (socket, Cmd.none)
+                Closed ->
+                    ({socket| readyState= Connecting}, Cmd.map toExternalAppMsgFn (LongPoll.poll socket.endPoint socket.longPollToken))
+
+        LongPollPolled (Ok longPollEvent) ->
+            case longPollEvent.status of
+                200 ->
+                    -- TODO: got content!
+                    ({socket | readyState = Closed}, Cmd.none)
+
+                401 ->
+                    -- TODO: send onJoinError Msg
+                    (socket, Cmd.none)
+                410 ->
+                    -- connecten is opened
+                    ({socket | readyState = Open, longPollToken = longPollEvent.token}, Cmd.none)
+                204 ->
+                    -- no content
+                    ({socket | readyState = Open}, Cmd.none)
+                _ ->
+                    ({socket | readyState = Closed}, Cmd.none)
+        LongPollPolled (Err _) ->
+            ({socket | readyState = Closed}, Cmd.none)
+
+        LongPollSent (Err _) ->
+            (socket, Cmd.none)
+
+
         _ ->
-            let
-                _ =
-                    Debug.log "Socket update" msg
-            in
-                ( socket, Cmd.none )
+            ( socket, Cmd.none )
 
 
 {-| push

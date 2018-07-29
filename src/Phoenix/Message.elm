@@ -1,8 +1,11 @@
 module Phoenix.Message exposing (Msg(..), mapAll, none, channelSuccessfullyJoined, channelFailedToJoin, channelClosed, channelError, cmdMap)
 
 import Json.Decode as Decode
+import Http
+import Time exposing (Time)
 import Phoenix.Channel exposing (Channel)
-
+import Phoenix.Event exposing (Event)
+import Phoenix.Internal.LongPollEvent exposing (LongPollEvent)
 
 type Msg msg
     = NoOp
@@ -11,6 +14,9 @@ type Msg msg
     | ChannelFailedToJoin (Channel msg) Decode.Value
     | ChannelClosed (Channel msg) Decode.Value
     | ChannelError (Channel msg) Decode.Value
+    | LongPollTick Time
+    | LongPollSent (Result Http.Error LongPollEvent)
+    | LongPollPolled (Result Http.Error LongPollEvent)
 
 
 mapAll : (Msg msg -> msg) -> Msg msg -> msg

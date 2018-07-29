@@ -4,7 +4,6 @@ import Phoenix.Channel as Channel exposing (Channel)
 import Phoenix.ChannelHelper as ChannelHelper
 import Phoenix.Message as Message exposing (Msg(..))
 import Phoenix.Event as Event exposing (Event)
-import Phoenix.Push as Push exposing (Push)
 import WebSocket as NativeWebSocket
 import Json.Encode as Encode
 import Dict

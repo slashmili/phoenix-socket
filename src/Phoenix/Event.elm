@@ -1,4 +1,4 @@
-module Phoenix.Event exposing (Event, init, decode, encode, decodeReply)
+module Phoenix.Event exposing (Event, init, decode, encode, decodeReply, decoder, encoder)
 
 import Json.Decode as Decode exposing (Decoder, field, maybe)
 import Json.Encode as Encode
