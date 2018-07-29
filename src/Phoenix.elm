@@ -1,14 +1,15 @@
-module Phoenix exposing (listen, update, join)
+module Phoenix exposing (listen, update, join, push, initPushWithChannelName)
 
 {-|
 # Basic Usage
 
-@docs listen, update, join
+@docs listen, update, join, push, initPushWithChannelName
 -}
 
 import Phoenix.Socket as Socket exposing(Socket)
-import Phoenix.Channel exposing(Channel)
+import Phoenix.Channel as Channel exposing(Channel)
 import Phoenix.Message as Message exposing(Msg)
+import Phoenix.Push as Push exposing(Push)
 
 {-|
 What t?
@@ -34,3 +35,23 @@ join toExternalAppMsgFn channel socket =
         (updateSocket, phxCmd) = Socket.join channel socket
     in
        (updateSocket, Cmd.map toExternalAppMsgFn phxCmd)
+
+{-|
+push
+-}
+push: (Msg msg -> msg) -> Push msg -> Socket msg -> (Socket msg, Cmd msg)
+push toExternalAppMsgFn pushRecord socket =
+    let
+        (updateSocket, phxCmd) = Socket.push pushRecord socket
+    in
+       (updateSocket, Cmd.map toExternalAppMsgFn phxCmd)
+
+
+
+{-| initPushWithChannelName
+-}
+initPushWithChannelName: String -> String -> Socket msg -> Maybe (Push msg)
+initPushWithChannelName event channelName socket =
+    socket.channels
+    |> Channel.findChannel channelName
+    |> Maybe.andThen(\chan -> Just (Push.init event chan))

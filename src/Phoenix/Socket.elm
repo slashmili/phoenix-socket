@@ -1,9 +1,9 @@
-module Phoenix.Socket exposing (init, Socket, listen, join, update)
+module Phoenix.Socket exposing (init, Socket, listen, join, update, push)
 
 {-|
 # Basic Usage
 
-@docs init, Socket, listen, join, update
+@docs init, Socket, listen, join, update, push
 
 -}
 
@@ -11,6 +11,7 @@ import Phoenix.Channel as Channel exposing (Channel)
 import Phoenix.ChannelHelper as ChannelHelper
 import Phoenix.Message as Message exposing (Msg(..))
 import Phoenix.Event as Event exposing (Event)
+import Phoenix.Push as Push exposing (Push)
 import Dict exposing (Dict)
 import Task exposing (Task)
 import WebSocket
@@ -112,6 +113,7 @@ mapExternalEvents socket event =
                     |> channelWithRef
                     |> Maybe.andThen (\chan -> Just (ChannelHelper.onClosedCommand event.payload chan))
                     |> Maybe.withDefault Message.none
+            -- phx_join phx_leave
 
             _ ->
                 socket.channels
@@ -267,4 +269,17 @@ update toExternalAppMsgFn msg socket =
                 ( updateSocket, Cmd.none )
 
         _ ->
+            let
+                _ = Debug.log "Socket update" msg
+            in
             ( socket, Cmd.none )
+{-|push
+-}
+push: Push msg -> Socket msg -> (Socket msg, Cmd (Msg msg))
+push pushRecord socket =
+    ( { socket
+        --| pushes = Dict.insert socket.ref pushRecord socket.pushes
+                   | ref = socket.ref + 1
+      }
+      , send socket pushRecord.event pushRecord.channel.topic pushRecord.payload
+      )
