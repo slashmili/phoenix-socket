@@ -1,9 +1,9 @@
-module Phoenix.Socket exposing (init, Socket, listen, join, update, push)
+module Phoenix.Socket exposing (init, withLongPoll, Socket, listen, join, update, push)
 
 {-|
 # Basic Usage
 
-@docs init, Socket, listen, join, update, push
+@docs init, withLongPoll, Socket, listen, join, update, push
 
 -}
 
@@ -12,15 +12,20 @@ import Phoenix.ChannelHelper as ChannelHelper
 import Phoenix.Message as Message exposing (Msg(..))
 import Phoenix.Event as Event exposing (Event)
 import Phoenix.Push as Push exposing (Push)
+import Phoenix.Internal.WebSocket as InternalWebSocket
 import Dict exposing (Dict)
 import Task exposing (Task)
-import WebSocket
 import Json.Encode as Encode
 
 
 type Transport
     = WebSocket
     | LongPoll
+
+
+type Status
+    = Diconnected
+    | Connected
 
 
 {-| Socket options
@@ -30,6 +35,7 @@ type alias Socket msg =
     , transport : Transport
     , channels : Dict String (Channel msg)
     , pushedEvents : Dict Int Event
+    , status : Status
     , ref : Int
     }
 
@@ -43,7 +49,18 @@ init endPoint =
     , transport = WebSocket
     , channels = Dict.empty
     , pushedEvents = Dict.empty
+    , status = Diconnected
     , ref = 1
+    }
+
+
+{-| withLongPoll
+-}
+withLongPoll : Socket msg -> Socket msg
+withLongPoll socket =
+    { socket
+        | transport = LongPoll
+        , endPoint = "http://localhost:4000/socket/longpoll"
     }
 
 
@@ -51,136 +68,11 @@ init endPoint =
 -}
 listen : Socket msg -> (Msg msg -> msg) -> Sub msg
 listen socket toExternalAppMsgFn =
-    let
-        mappedMsg =
-            Message.mapAll toExternalAppMsgFn
-
-        subs =
-            Sub.batch
-                [ internalMsgs socket
-                , externalMsgs socket
-                ]
-    in
-        Sub.map mappedMsg subs
-
-
-externalMsgs : Socket msg -> Sub (Msg msg)
-externalMsgs socket =
-    Sub.map (mapMaybeExternalEvents socket) (phoenixMessages socket)
-
-
-mapMaybeExternalEvents : Socket msg -> Maybe Event -> Msg msg
-mapMaybeExternalEvents socket maybeEvent =
-    case maybeEvent of
-        Just event ->
-            mapExternalEvents socket event
-
-        Nothing ->
-            Message.none
-
-
-mapExternalEvents : Socket msg -> Event -> Msg msg
-mapExternalEvents socket event =
-    let
-        channelWithRef =
-            Channel.findChannelWithRef event.topic event.ref
-
-        channel =
-            Channel.findChannel event.topic
-    in
-        case event.event of
-            "phx_reply" ->
-                case channelWithRef socket.channels of
-                    Just chan ->
-                        case Event.decodeReply event.payload of
-                            Ok response ->
-                                ChannelHelper.onJoinedCommand response chan
-
-                            Err response ->
-                                ChannelHelper.onFailedToJoinCommand response chan
-
-                    Nothing ->
-                        Message.none
-
-            "phx_error" ->
-                socket.channels
-                    |> channelWithRef
-                    |> Maybe.andThen (\chan -> Just (ChannelHelper.onErrorCommand event.payload chan))
-                    |> Maybe.withDefault Message.none
-
-            "phx_close" ->
-                socket.channels
-                    |> channelWithRef
-                    |> Maybe.andThen (\chan -> Just (ChannelHelper.onClosedCommand event.payload chan))
-                    |> Maybe.withDefault Message.none
-            -- phx_join phx_leave
-
-            _ ->
-                socket.channels
-                    |> channel
-                    |> Maybe.andThen (\chan -> Just (ChannelHelper.onCustomCommand event.event event.payload chan))
-                    |> Maybe.withDefault Message.none
-
-
-internalMsgs : Socket msg -> Sub (Msg msg)
-internalMsgs socket =
-    Sub.map (mapMaybeInternalEvents socket) (phoenixMessages socket)
-
-
-mapMaybeInternalEvents : Socket msg -> Maybe Event -> Msg msg
-mapMaybeInternalEvents socket maybeEvent =
-    case maybeEvent of
-        Just event ->
-            mapInternalEvents socket event
-
-        Nothing ->
-            Message.none
-
-
-mapInternalEvents : Socket msg -> Event -> Msg msg
-mapInternalEvents socket event =
-    let
-        channel =
-            Channel.findChannel event.topic
-    in
-        case event.event of
-            "phx_reply" ->
-                handleInternalPhxReply socket event
-
-            "phx_close" ->
-                socket.channels
-                    |> channel
-                    |> Maybe.andThen (\chan -> Just (Message.channelClosed event.payload chan))
-                    |> Maybe.withDefault Message.none
-
-            "phx_error" ->
-                socket.channels
-                    |> channel
-                    |> Maybe.andThen (\chan -> Just (Message.channelError event.payload chan))
-                    |> Maybe.withDefault Message.none
-
-            _ ->
-                Message.none
-
-
-handleInternalPhxReply : Socket msg -> Event -> Msg msg
-handleInternalPhxReply socket event =
-    case Channel.findChannelWithRef event.topic event.ref socket.channels of
-        Just channel ->
-            case Event.decodeReply event.payload of
-                Ok response ->
-                    Message.channelSuccessfullyJoined channel response
-
-                Err response ->
-                    Message.channelFailedToJoin channel response
-
-        Nothing ->
-            Message.none
-
-
-phoenixMessages : Socket msg -> Sub (Maybe Event)
-phoenixMessages socket =
-    WebSocket.listen socket.endPoint Event.decode
+    case socket.transport of
+        WebSocket ->
+            InternalWebSocket.listen socket.endPoint socket.channels toExternalAppMsgFn
+        LongPoll ->
+            Sub.map toExternalAppMsgFn Sub.none
 
 
 addChannel : Channel msg -> Socket msg -> Socket msg
@@ -206,36 +98,23 @@ join channel socket =
 doJoin : Channel msg -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
 doJoin channel socket =
     let
+        eventName = "phx_join"
         updatedChannel =
             Channel.setJoiningState socket.ref channel
-    in
-        socket
-            |> addChannel updatedChannel
-            |> pushEvent "phx_join" updatedChannel
-
-
-pushEvent : String -> Channel msg -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
-pushEvent eventName channel socket =
-    let
         event =
             Event.init eventName channel.topic channel.payload (Just socket.ref)
 
         updateSocket =
-            addEvent event socket
+            socket
+            |> addEvent event
+            |> addChannel updatedChannel
+
     in
-        ( updateSocket
-        , send socket event.event event.topic event.payload
-        )
-
-
-send : Socket msg -> String -> String -> Encode.Value -> Cmd (Msg msg)
-send { endPoint, ref } event channel payload =
-    sendMessage endPoint (Event event channel payload (Just ref))
-
-
-sendMessage : String -> Event -> Cmd (Msg msg)
-sendMessage path message =
-    WebSocket.send path (Event.encode message)
+       case socket.transport of
+           WebSocket ->
+               (updateSocket, InternalWebSocket.send socket.endPoint event)
+           LongPoll ->
+               (updateSocket, Cmd.none)
 
 
 addEvent : Event -> Socket msg -> Socket msg
@@ -270,16 +149,22 @@ update toExternalAppMsgFn msg socket =
 
         _ ->
             let
-                _ = Debug.log "Socket update" msg
+                _ =
+                    Debug.log "Socket update" msg
             in
-            ( socket, Cmd.none )
-{-|push
+                ( socket, Cmd.none )
+
+
+{-| push
 -}
-push: Push msg -> Socket msg -> (Socket msg, Cmd (Msg msg))
+push : Push msg -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
 push pushRecord socket =
-    ( { socket
-        --| pushes = Dict.insert socket.ref pushRecord socket.pushes
-                   | ref = socket.ref + 1
-      }
-      , send socket pushRecord.event pushRecord.channel.topic pushRecord.payload
-      )
+    let
+        event = Event pushRecord.event pushRecord.channel.topic pushRecord.payload (Just socket.ref)
+        updateSocket = addEvent event socket
+    in
+       case socket.transport of
+           WebSocket ->
+               (updateSocket, InternalWebSocket.send socket.endPoint event)
+           LongPoll ->
+               (updateSocket, Cmd.none)
