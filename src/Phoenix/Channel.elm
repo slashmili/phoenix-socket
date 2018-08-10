@@ -16,9 +16,9 @@ module Phoenix.Channel
         )
 
 {-|
-# Basic Usage
+#
 
-@docs init, on, isOngoing, setJoiningState, findChannel
+@docs init, on, isOngoing, setJoiningState, findChannel, Channel, findChannelWithRef, onClose, onError, onJoin, onJoinError, setJoinedState, updateChannelDict
 
 -}
 
@@ -36,7 +36,8 @@ type State
     | Leaving
 
 
-
+{-|
+-}
 type alias Channel msg =
     { topic : String
     , on : Dict String (Value -> msg)
@@ -47,6 +48,8 @@ type alias Channel msg =
     }
 
 
+{-|
+-}
 init : String -> Channel msg
 init topic =
     { topic = topic
@@ -58,30 +61,43 @@ init topic =
     }
 
 
+{-|
+-}
 on : String -> (Value -> msg) -> Channel msg -> Channel msg
 on event cb channel =
     { channel | on = Dict.insert event cb channel.on }
 
 
+{-|
+-}
 receive : String -> (Value -> msg) -> Channel msg -> Channel msg
 receive event valueToMsg channel =
     { channel | receive = Dict.insert event valueToMsg channel.receive }
 
 
+{-|
+-}
 onJoin : (Value -> msg) -> Channel msg -> Channel msg
 onJoin valueToMsg channel =
     receive "ok" valueToMsg channel
 
 
+{-|
+-}
 onJoinError : (Value -> msg) -> Channel msg -> Channel msg
 onJoinError valueToMsg channel =
     receive "join_error" valueToMsg channel
 
+
+{-|
+-}
 onError : (Value -> msg) -> Channel msg -> Channel msg
 onError valueToMsg channel =
     receive "error" valueToMsg channel
 
 
+{-|
+-}
 onClose : (Value -> msg) -> Channel msg -> Channel msg
 onClose valueToMsg channel =
     receive "close" valueToMsg channel
@@ -98,22 +114,28 @@ isOngoing channel =
         False
 
 
+{-|
+-}
 setJoiningState : Int -> Channel msg -> Channel msg
 setJoiningState ref channel =
     { channel | state = Joining, joinRef = Just ref }
 
 
+{-|
+-}
 setJoinedState : Channel msg -> Channel msg
 setJoinedState channel =
     { channel | state = Joined, joinRef = Nothing }
 
 
+{-|
+-}
 updateChannelDict : Channel msg -> Dict String (Channel msg) -> Dict String (Channel msg)
 updateChannelDict channel channels =
     Dict.insert channel.topic channel channels
 
 
-{-| Something
+{-|
 -}
 findChannelWithRef : String -> Maybe Int -> Dict String (Channel msg) -> Maybe (Channel msg)
 findChannelWithRef topic joinRef channels =
@@ -128,7 +150,7 @@ findChannelWithRef topic joinRef channels =
             Nothing
 
 
-{-| Something
+{-|
 -}
 findChannel : String -> Dict String (Channel msg) -> Maybe (Channel msg)
 findChannel topic channels =

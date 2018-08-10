@@ -1,5 +1,7 @@
 # Phoenix Socket
-This library is an [Elm](http://elm-lang.org/) client for [Phoenix](https://github.com/phoenixframework/phoenix) [channels](https://hexdocs.pm/phoenix/channels.html)
+This library is an [Elm](http://elm-lang.org/) client for [Phoenix](https://github.com/phoenixframework/phoenix) [channels](https://hexdocs.pm/phoenix/channels.html).
+
+This package is not ready to be used in production!
 
 
 ## Credit
