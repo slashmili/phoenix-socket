@@ -1,0 +1,77 @@
+module Phoenix.Message exposing (Msg, mapAll, none, toInternalMsg, toExternalMsg, extractInternalMsg)
+
+{-|
+# This module provides Msg that the package handles
+
+@docs Msg, mapAll, none, toInternalMsg, toExternalMsg, extractInternalMsg
+-}
+
+import Json.Decode as Decode
+import Http
+import Time exposing (Time)
+import Phoenix.Channel exposing (Channel)
+import Phoenix.Event exposing (Event)
+import Phoenix.Internal.Message as InternalMessage exposing (InternalMessage(..))
+
+
+{-| This Msg should be used in user's main app
+
+    import Phoenix.Message as PhxMsg
+
+    type MyAppMsg =
+        ..
+        | PhoenixMsg (PhxMsg.Msg MyAppMsg)
+
+-}
+type Msg msg
+    = NoOp
+    | ExternalMsg msg
+    | InternalMsg (InternalMessage msg)
+
+
+{-|
+-}
+mapAll : (Msg msg -> msg) -> Msg msg -> msg
+mapAll fn internalMsg =
+    case internalMsg of
+        ExternalMsg msg ->
+            msg
+
+        _ ->
+            fn internalMsg
+
+
+{-|
+-}
+none : Msg msg
+none =
+    NoOp
+
+
+{-|
+-}
+toExternalMsg : msg -> Msg msg
+toExternalMsg externalMsg =
+    ExternalMsg externalMsg
+
+
+{-|
+-}
+toInternalMsg : InternalMessage msg -> Msg msg
+toInternalMsg internalMsg =
+    InternalMsg internalMsg
+
+
+{-|
+-}
+extractInternalMsg : Msg msg -> InternalMessage msg
+extractInternalMsg publicMsg =
+    case publicMsg of
+        InternalMsg msg ->
+            msg
+
+        ExternalMsg msg ->
+            InternalMessage.none
+
+        NoOp ->
+            InternalMessage.none

@@ -32,15 +32,66 @@ suite =
                             Socket.init basicEndpoint
                     in
                         Expect.equal (Dict.size socket.channels) 0
-            , test "withChannel should add an item to list of channels" <|
+            , test "join should add an item to list of channels" <|
                 \_ ->
                     let
-                        socket =
+                        channel =
+                            Channel.init "chat:room233"
+
+                        ( socket, cmd ) =
                             basicEndpoint
                                 |> Socket.init
-                                |> Socket.withChannel (Channel.init "foo:bar")
+                                |> Socket.join channel
                     in
                         Expect.equal (Dict.size socket.channels) 1
+            , test "calling join again on a channel that is not joined yet should be ignored" <|
+                \_ ->
+                    let
+                        channel =
+                            Channel.init "chat:room233"
+
+                        ( socket, cmd ) =
+                            basicEndpoint
+                                |> Socket.init
+                                |> Socket.join channel
+                                |> Tuple.first
+                                |> Socket.join channel
+                    in
+                        Expect.equal (Dict.size socket.channels) 1
+            , test "join should add an item to list of pushedEvents" <|
+                \_ ->
+                    let
+                        channel =
+                            Channel.init "chat:room233"
+
+                        ( socket, cmd ) =
+                            basicEndpoint
+                                |> Socket.init
+                                |> Socket.join channel
+                    in
+                        Expect.equal (Dict.size socket.pushedEvents) 1
+            , test "Join event name should be phx_join" <|
+                \_ ->
+                    let
+                        channel =
+                            Channel.init "chat:room233"
+
+                        ( socket, cmd ) =
+                            basicEndpoint
+                                |> Socket.init
+                                |> Socket.join channel
+                    in
+                        case Dict.get 1 socket.pushedEvents of
+                            Just event ->
+                                Expect.equal event.event "phx_join"
+
+                            Nothing ->
+                                Expect.fail "didn't find event"
+            ]
+        , describe "join a channel"
+            [ test "add channel to socket channel list" <|
+                \_ ->
+                    Expect.equal 1 1
             ]
         ]
 
