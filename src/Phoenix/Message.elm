@@ -1,11 +1,11 @@
-module Phoenix.Message exposing (Msg, extractInternalMsg, mapAll, none, toExternalMsg, toInternalMsg)
+module Phoenix.Message exposing (Msg, extractExternalMsg, extractInternalMsg, mapAll, none, toExternalMsg, toInternalMsg)
 
 {-|
 
 
 # This module provides Msg that the package handles
 
-@docs Msg, mapAll, none, toInternalMsg, toExternalMsg, extractInternalMsg
+@docs Msg, mapAll, none, toInternalMsg, toExternalMsg, extractInternalMsg, extractExternalMsg
 
 -}
 
@@ -73,3 +73,14 @@ extractInternalMsg publicMsg =
 
         NoOp ->
             InternalMessage.none
+
+
+{-| -}
+extractExternalMsg : Msg msg -> Maybe msg
+extractExternalMsg publicMsg =
+    case publicMsg of
+        ExternalMsg msg ->
+            Just msg
+
+        _ ->
+            Nothing
