@@ -1,13 +1,13 @@
 module Phoenix.Internal.WebSocket exposing (..)
 
-import Phoenix.Channel as Channel exposing (Channel)
-import Phoenix.Internal.Channel as ChannelHelper
-import Phoenix.Message as Message exposing (Msg)
-import Phoenix.Event as Event exposing (Event)
-import Phoenix.Internal.Socket as SocketHelper
-import WebSocket as NativeWebSocket
-import Json.Encode as Encode
 import Dict
+import Json.Encode as Encode
+import Phoenix.Channel as Channel exposing (Channel)
+import Phoenix.Event as Event exposing (Event)
+import Phoenix.Internal.Channel as ChannelHelper
+import Phoenix.Internal.Socket as SocketHelper
+import Phoenix.Message as Message exposing (Msg)
+import WebSocket as NativeWebSocket
 
 
 listen : String -> Dict.Dict String (Channel msg) -> Float -> (Msg msg -> msg) -> Sub msg
@@ -23,7 +23,7 @@ listen endPoint channels heartbeatIntervalSeconds toExternalAppMsgFn =
                 , heartbeatSubscription heartbeatIntervalSeconds
                 ]
     in
-        Sub.map mappedMsg subs
+    Sub.map mappedMsg subs
 
 
 internalMsgs : String -> Dict.Dict String (Channel msg) -> Sub (Msg msg)

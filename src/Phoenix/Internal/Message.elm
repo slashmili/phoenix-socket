@@ -1,8 +1,7 @@
-module Phoenix.Internal.Message exposing (InternalMessage(..), channelSuccessfullyJoined, channelFailedToJoin, none, channelClosed, channelError)
+module Phoenix.Internal.Message exposing (InternalMessage(..), channelClosed, channelError, channelFailedToJoin, channelSuccessfullyJoined, none)
 
-import Json.Decode as Decode
 import Http
-import Time exposing (Time)
+import Json.Decode as Decode
 import Phoenix.Channel exposing (Channel)
 import Phoenix.Event exposing (Event)
 import Time exposing (Time)

@@ -1,16 +1,16 @@
 module Phoenix.SocketTest exposing (..)
 
+import Dict
 import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer, int, list, string)
-import Test exposing (..)
-import Dict
-import Phoenix.Socket as Socket
-import Phoenix.Channel as Channel
-import Phoenix.Message as Message
-import Phoenix.Push as Push
-import Phoenix.Internal.Message as InternalMessage exposing (InternalMessage(..))
 import Json.Decode as Decode exposing (Value)
 import Json.Encode as Encode
+import Phoenix.Channel as Channel
+import Phoenix.Internal.Message as InternalMessage exposing (InternalMessage(..))
+import Phoenix.Message as Message
+import Phoenix.Push as Push
+import Phoenix.Socket as Socket
+import Test exposing (..)
 
 
 basicEndpoint =
@@ -27,7 +27,7 @@ suite =
                         socket =
                             Socket.init endPoint
                     in
-                        Expect.equal socket.endPoint endPoint
+                    Expect.equal socket.endPoint endPoint
             ]
         , describe "initialise socket with channel"
             [ test "default init should return empty channel list" <|
@@ -36,7 +36,7 @@ suite =
                         socket =
                             Socket.init basicEndpoint
                     in
-                        Expect.equal (Dict.size socket.channels) 0
+                    Expect.equal (Dict.size socket.channels) 0
             , test "join should add an item to list of channels" <|
                 \_ ->
                     let
@@ -48,7 +48,7 @@ suite =
                                 |> Socket.init
                                 |> Socket.join channel
                     in
-                        Expect.equal (Dict.size socket.channels) 1
+                    Expect.equal (Dict.size socket.channels) 1
             , test "calling join again on a channel that is not joined yet should be ignored" <|
                 \_ ->
                     let
@@ -62,7 +62,7 @@ suite =
                                 |> Tuple.first
                                 |> Socket.join channel
                     in
-                        Expect.equal (Dict.size socket.channels) 1
+                    Expect.equal (Dict.size socket.channels) 1
             , test "join should add an item to list of pushedEvents" <|
                 \_ ->
                     let
@@ -74,7 +74,7 @@ suite =
                                 |> Socket.init
                                 |> Socket.join channel
                     in
-                        Expect.equal (Dict.size socket.pushedEvents) 1
+                    Expect.equal (Dict.size socket.pushedEvents) 1
             , test "Join event name should be phx_join" <|
                 \_ ->
                     let
@@ -86,12 +86,12 @@ suite =
                                 |> Socket.init
                                 |> Socket.join channel
                     in
-                        case Dict.get 1 socket.pushedEvents of
-                            Just event ->
-                                Expect.equal event.event "phx_join"
+                    case Dict.get 1 socket.pushedEvents of
+                        Just event ->
+                            Expect.equal event.event "phx_join"
 
-                            Nothing ->
-                                Expect.fail "didn't find event"
+                        Nothing ->
+                            Expect.fail "didn't find event"
             ]
         , describe "listen to socket"
             [ test "return subscription" <|
@@ -103,7 +103,7 @@ suite =
                         sub =
                             Socket.listen PhoenixMsg socket
                     in
-                        Expect.notEqual sub Sub.none
+                    Expect.notEqual sub Sub.none
             ]
         , describe "updates socket model"
             [ test "none" <|
@@ -119,7 +119,7 @@ suite =
                         ( updatedSocket, cmd ) =
                             Socket.update PhoenixMsg msg socket
                     in
-                        Expect.equal cmd Cmd.none
+                    Expect.equal cmd Cmd.none
             , test "ChannelSuccessfullyJoined" <|
                 \_ ->
                     let
@@ -145,12 +145,12 @@ suite =
                         joinedChannel =
                             Channel.findChannel channel.topic updatedSocket.channels
                     in
-                        case joinedChannel of
-                            Just jc ->
-                                Expect.equal (Channel.isJoined jc) True
+                    case joinedChannel of
+                        Just jc ->
+                            Expect.equal (Channel.isJoined jc) True
 
-                            _ ->
-                                Expect.fail "couldn't find the channel!"
+                        _ ->
+                            Expect.fail "couldn't find the channel!"
             , test "ChannelFailedToJoin" <|
                 \_ ->
                     let
@@ -176,12 +176,12 @@ suite =
                         errChannel =
                             Channel.findChannel channel.topic updatedSocket.channels
                     in
-                        case errChannel of
-                            Just ec ->
-                                Expect.equal (Channel.isErrored ec) True
+                    case errChannel of
+                        Just ec ->
+                            Expect.equal (Channel.isErrored ec) True
 
-                            _ ->
-                                Expect.fail "couldn't find the channel!"
+                        _ ->
+                            Expect.fail "couldn't find the channel!"
             , test "Heartbeat" <|
                 \_ ->
                     let
@@ -211,12 +211,12 @@ suite =
                         event =
                             Dict.get 2 socket.pushedEvents
                     in
-                        case Dict.get 2 socket.pushedEvents of
-                            Just event ->
-                                Expect.equal event.event "heartbeat"
+                    case Dict.get 2 socket.pushedEvents of
+                        Just event ->
+                            Expect.equal event.event "heartbeat"
 
-                            _ ->
-                                Expect.fail "couldn't find second heartbeat"
+                        _ ->
+                            Expect.fail "couldn't find second heartbeat"
             ]
         , describe "pushs event"
             [ test "push and event" <|
@@ -239,12 +239,12 @@ suite =
                                 |> Socket.push push
                                 |> Tuple.first
                     in
-                        case Dict.get 1 socket.pushedEvents of
-                            Just event ->
-                                Expect.equal event.payload payload
+                    case Dict.get 1 socket.pushedEvents of
+                        Just event ->
+                            Expect.equal event.payload payload
 
-                            _ ->
-                                Expect.fail "couldn't find pushed event"
+                        _ ->
+                            Expect.fail "couldn't find pushed event"
             , test "push second event" <|
                 \_ ->
                     let
@@ -267,12 +267,12 @@ suite =
                                 |> Socket.push push
                                 |> Tuple.first
                     in
-                        case Dict.get 2 socket.pushedEvents of
-                            Just event ->
-                                Expect.equal event.payload payload
+                    case Dict.get 2 socket.pushedEvents of
+                        Just event ->
+                            Expect.equal event.payload payload
 
-                            _ ->
-                                Expect.fail "couldn't find second pushed event"
+                        _ ->
+                            Expect.fail "couldn't find second pushed event"
             ]
         ]
 

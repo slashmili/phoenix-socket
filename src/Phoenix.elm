@@ -1,16 +1,19 @@
-module Phoenix exposing (listen, update, join, push, initPushWithChannelName, pushWithPayload)
+module Phoenix exposing (initPushWithChannelName, join, listen, push, pushWithPayload, update)
 
 {-|
+
+
 # Basic Usage
 
 @docs listen, update, join, push, initPushWithChannelName, pushWithPayload
+
 -}
 
-import Phoenix.Socket as Socket exposing (Socket)
+import Json.Encode as Encode
 import Phoenix.Channel as Channel exposing (Channel)
 import Phoenix.Message as Message exposing (Msg)
 import Phoenix.Push as Push exposing (Push)
-import Json.Encode as Encode
+import Phoenix.Socket as Socket exposing (Socket)
 
 
 {-| Listens to socket change and timers
@@ -35,7 +38,7 @@ join toExternalAppMsgFn channel socket =
         ( updateSocket, phxCmd ) =
             Socket.join channel socket
     in
-        ( updateSocket, Cmd.map toExternalAppMsgFn phxCmd )
+    ( updateSocket, Cmd.map toExternalAppMsgFn phxCmd )
 
 
 {-| Pushes a a message
@@ -46,7 +49,7 @@ push toExternalAppMsgFn pushRecord socket =
         ( updateSocket, phxCmd ) =
             Socket.push pushRecord socket
     in
-        ( updateSocket, Cmd.map toExternalAppMsgFn phxCmd )
+    ( updateSocket, Cmd.map toExternalAppMsgFn phxCmd )
 
 
 {-| pushWithPayload

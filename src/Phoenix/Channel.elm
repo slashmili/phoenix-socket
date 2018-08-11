@@ -1,33 +1,36 @@
 module Phoenix.Channel
     exposing
         ( Channel
-        , init
-        , setJoiningState
-        , isOngoing
-        , isJoined
-        , isErrored
         , addChannel
-        , updateChannel
-        , findChannelWithRef
         , findChannel
-        , setJoinedState
-        , setErroredState
+        , findChannelWithRef
+        , init
+        , isErrored
+        , isJoined
+        , isOngoing
         , on
+        , onClose
+        , onError
         , onJoin
         , onJoinError
-        , onError
-        , onClose
+        , setErroredState
+        , setJoinedState
+        , setJoiningState
+        , updateChannel
         )
 
 {-|
+
+
 # This module is keeping states related to channel
 
 @docs Channel, init, setJoiningState, setJoinedState, setErroredState, isOngoing, isJoined, isErrored, addChannel, updateChannel, findChannelWithRef, findChannel, on, onJoin, onJoinError, onError, onClose
+
 -}
 
+import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Value)
 import Json.Encode as Encode
-import Dict exposing (Dict)
 
 
 type State
@@ -39,8 +42,7 @@ type State
     | Leaving
 
 
-{-|
-Channel Model
+{-| Channel Model
 -}
 type alias Channel msg =
     { topic : String
@@ -52,8 +54,7 @@ type alias Channel msg =
     }
 
 
-{-|
-Init channel model using channel topic
+{-| Init channel model using channel topic
 -}
 init : String -> Channel msg
 init topic =
@@ -66,8 +67,7 @@ init topic =
     }
 
 
-{-|
-Sets the joining reference and state to Joining
+{-| Sets the joining reference and state to Joining
 -}
 setJoiningState : Int -> Channel msg -> Channel msg
 setJoiningState ref channel =
@@ -94,6 +94,7 @@ isOngoing : Channel msg -> Bool
 isOngoing channel =
     if channel.state == Joining || channel.state == Joined then
         True
+
     else
         False
 
@@ -137,6 +138,7 @@ findChannelWithRef topic joinRef channels =
         Just channel ->
             if channel.joinRef == joinRef then
                 Just channel
+
             else
                 Nothing
 

@@ -1,14 +1,14 @@
 module Phoenix.Internal.Socket exposing (..)
 
-import Phoenix.Channel as Channel exposing (Channel)
-import Phoenix.Internal.Channel as ChannelHelper
-import Phoenix.Message as Message exposing (Msg)
-import Phoenix.Internal.Message as InternalMessage exposing (InternalMessage(..))
-import Phoenix.Event as Event exposing (Event)
-import WebSocket as NativeWebSocket
-import Json.Encode as Encode
 import Dict
+import Json.Encode as Encode
+import Phoenix.Channel as Channel exposing (Channel)
+import Phoenix.Event as Event exposing (Event)
+import Phoenix.Internal.Channel as ChannelHelper
+import Phoenix.Internal.Message as InternalMessage exposing (InternalMessage(..))
+import Phoenix.Message as Message exposing (Msg)
 import Time
+import WebSocket as NativeWebSocket
 
 
 mapMaybeInternalEvents : Dict.Dict String (Channel msg) -> Maybe Event -> Msg msg
@@ -32,24 +32,24 @@ mapInternalEvents channels event =
         channel =
             Channel.findChannel event.topic
     in
-        case event.event of
-            "phx_reply" ->
-                handleInternalPhxReply channels event
+    case event.event of
+        "phx_reply" ->
+            handleInternalPhxReply channels event
 
-            "phx_close" ->
-                channels
-                    |> channel
-                    |> Maybe.andThen (\chan -> Just (Message.toInternalMsg (InternalMessage.channelClosed event.payload chan)))
-                    |> Maybe.withDefault Message.none
+        "phx_close" ->
+            channels
+                |> channel
+                |> Maybe.andThen (\chan -> Just (Message.toInternalMsg (InternalMessage.channelClosed event.payload chan)))
+                |> Maybe.withDefault Message.none
 
-            "phx_error" ->
-                channels
-                    |> channel
-                    |> Maybe.andThen (\chan -> Just (Message.toInternalMsg (InternalMessage.channelError event.payload chan)))
-                    |> Maybe.withDefault Message.none
+        "phx_error" ->
+            channels
+                |> channel
+                |> Maybe.andThen (\chan -> Just (Message.toInternalMsg (InternalMessage.channelError event.payload chan)))
+                |> Maybe.withDefault Message.none
 
-            _ ->
-                Message.none
+        _ ->
+            Message.none
 
 
 mapMaybeExternalEvents : Dict.Dict String (Channel msg) -> Maybe Event -> Msg msg
@@ -71,38 +71,38 @@ mapExternalEvents channels event =
         channel =
             Channel.findChannel event.topic
     in
-        case event.event of
-            "phx_reply" ->
-                case channelWithRef channels of
-                    Just chan ->
-                        case Event.decodeReply event.payload of
-                            Ok response ->
-                                ChannelHelper.onJoinedCommand response chan
+    case event.event of
+        "phx_reply" ->
+            case channelWithRef channels of
+                Just chan ->
+                    case Event.decodeReply event.payload of
+                        Ok response ->
+                            ChannelHelper.onJoinedCommand response chan
 
-                            Err response ->
-                                ChannelHelper.onFailedToJoinCommand response chan
+                        Err response ->
+                            ChannelHelper.onFailedToJoinCommand response chan
 
-                    Nothing ->
-                        Message.none
+                Nothing ->
+                    Message.none
 
-            "phx_error" ->
-                channels
-                    |> channelWithRef
-                    |> Maybe.andThen (\chan -> Just (ChannelHelper.onErrorCommand event.payload chan))
-                    |> Maybe.withDefault Message.none
+        "phx_error" ->
+            channels
+                |> channelWithRef
+                |> Maybe.andThen (\chan -> Just (ChannelHelper.onErrorCommand event.payload chan))
+                |> Maybe.withDefault Message.none
 
-            "phx_close" ->
-                channels
-                    |> channelWithRef
-                    |> Maybe.andThen (\chan -> Just (ChannelHelper.onClosedCommand event.payload chan))
-                    |> Maybe.withDefault Message.none
+        "phx_close" ->
+            channels
+                |> channelWithRef
+                |> Maybe.andThen (\chan -> Just (ChannelHelper.onClosedCommand event.payload chan))
+                |> Maybe.withDefault Message.none
 
-            -- phx_join phx_leave
-            _ ->
-                channels
-                    |> channel
-                    |> Maybe.andThen (\chan -> Just (ChannelHelper.onCustomCommand event.event event.payload chan))
-                    |> Maybe.withDefault Message.none
+        -- phx_join phx_leave
+        _ ->
+            channels
+                |> channel
+                |> Maybe.andThen (\chan -> Just (ChannelHelper.onCustomCommand event.event event.payload chan))
+                |> Maybe.withDefault Message.none
 
 
 handleInternalPhxReply : Dict.Dict String (Channel msg) -> Event -> Msg msg

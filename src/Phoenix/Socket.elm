@@ -1,20 +1,23 @@
-module Phoenix.Socket exposing (Socket, init, update, join, listen, push)
+module Phoenix.Socket exposing (Socket, init, join, listen, push, update)
 
 {-|
+
+
 # This module provides an interface for connecting to Phoenix Socket
 
 @docs Socket, init, update, join, listen, push
+
 -}
 
 import Dict exposing (Dict)
-import Phoenix.Serializer exposing (Serializer(..))
-import Phoenix.Internal.WebSocket as InternalWebSocket
-import Phoenix.Message as Message exposing (Msg)
-import Phoenix.Internal.Message as InternalMessage exposing (InternalMessage(..))
+import Json.Encode as Encode
 import Phoenix.Channel as Channel exposing (Channel)
 import Phoenix.Event as Event exposing (Event)
+import Phoenix.Internal.Message as InternalMessage exposing (InternalMessage(..))
+import Phoenix.Internal.WebSocket as InternalWebSocket
+import Phoenix.Message as Message exposing (Msg)
 import Phoenix.Push as Push exposing (Push)
-import Json.Encode as Encode
+import Phoenix.Serializer exposing (Serializer(..))
 
 
 type Transport
@@ -22,8 +25,7 @@ type Transport
     | LongPoll
 
 
-{-|
-Socket model
+{-| Socket model
 -}
 type alias Socket msg =
     { endPoint : String
@@ -38,8 +40,7 @@ type alias Socket msg =
     }
 
 
-{-|
-Initializes Socket using the websocket address
+{-| Initializes Socket using the websocket address
 -}
 init : String -> Socket msg
 init endPoint =
@@ -64,6 +65,7 @@ join channel socket =
         Just channelItm ->
             if Channel.isOngoing channelItm then
                 ( socket, Cmd.none )
+
             else
                 doJoin channel socket
 
@@ -91,7 +93,7 @@ update toExternalAppMsgFn msg socket =
                 updateSocket =
                     { socket | channels = Channel.updateChannel updatedChannel socket.channels }
             in
-                ( updateSocket, Cmd.none )
+            ( updateSocket, Cmd.none )
 
         ChannelFailedToJoin channel response ->
             let
@@ -101,14 +103,14 @@ update toExternalAppMsgFn msg socket =
                 updateSocket =
                     { socket | channels = Channel.updateChannel updatedChannel socket.channels }
             in
-                ( updateSocket, Cmd.none )
+            ( updateSocket, Cmd.none )
 
         Heartbeat heartbeatTimestamp ->
             let
                 ( updateSocket, cmd ) =
                     heartbeat socket
             in
-                ( { updateSocket | heartbeatTimestamp = heartbeatTimestamp }, Cmd.map toExternalAppMsgFn cmd )
+            ( { updateSocket | heartbeatTimestamp = heartbeatTimestamp }, Cmd.map toExternalAppMsgFn cmd )
 
         HeartbeatReply ->
             ( { socket | heartbeatReplyTimestamp = socket.heartbeatTimestamp }, Cmd.none )
@@ -125,7 +127,7 @@ push pushRecord socket =
         event =
             Event pushRecord.event pushRecord.channel.topic pushRecord.payload (Just socket.ref)
     in
-        doPush event socket
+    doPush event socket
 
 
 doPush : Event -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
@@ -134,7 +136,7 @@ doPush event socket =
         updateSocket =
             addEvent event socket
     in
-        ( updateSocket, InternalWebSocket.send socket.endPoint event )
+    ( updateSocket, InternalWebSocket.send socket.endPoint event )
 
 
 doJoin : Channel msg -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
@@ -154,9 +156,9 @@ doJoin channel socket =
                 |> addEvent event
                 |> addChannel updatedChannel
     in
-        -- LongPoll ->
-        --        (updateSocket, LongPoll.send socket.endPoint socket.longPollToken event)
-        ( updateSocket, InternalWebSocket.send socket.endPoint event )
+    -- LongPoll ->
+    --        (updateSocket, LongPoll.send socket.endPoint socket.longPollToken event)
+    ( updateSocket, InternalWebSocket.send socket.endPoint event )
 
 
 addEvent : Event -> Socket msg -> Socket msg
@@ -175,4 +177,4 @@ heartbeat socket =
         event =
             Event.init "heartbeat" "phoenix" (Encode.object []) (Just socket.ref)
     in
-        doPush event socket
+    doPush event socket

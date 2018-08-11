@@ -1,4 +1,4 @@
-module Phoenix.Event exposing (Event, init, decode, encode, decodeReply, decoder, encoder)
+module Phoenix.Event exposing (Event, decode, decodeReply, decoder, encode, encoder, init)
 
 import Json.Decode as Decode exposing (Decoder, field, maybe)
 import Json.Encode as Encode
@@ -76,5 +76,6 @@ statusToResult : String -> Decode.Value -> Result Decode.Value Decode.Value
 statusToResult status response =
     if status == "ok" then
         Ok response
+
     else
         Err response
