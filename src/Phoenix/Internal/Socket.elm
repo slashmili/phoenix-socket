@@ -97,7 +97,6 @@ mapExternalEvents channels event =
                 |> Maybe.andThen (\chan -> Just (ChannelHelper.onClosedCommand event.payload chan))
                 |> Maybe.withDefault Message.none
 
-        -- phx_join phx_leave
         _ ->
             channels
                 |> channel

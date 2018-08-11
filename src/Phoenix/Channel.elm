@@ -188,6 +188,9 @@ onJoinError valueToMsg channel =
 
 
 {-| Triggers this message when failed to send join command on the connection
+
+onError messages are invoked if the channel crashes on the server.
+
 -}
 onError : (Value -> msg) -> Channel msg -> Channel msg
 onError valueToMsg channel =
@@ -195,6 +198,9 @@ onError valueToMsg channel =
 
 
 {-| Triggers this message when channel is closed
+
+onClose messages are invoked if the channel explicitly closed on the server.
+
 -}
 onClose : (Value -> msg) -> Channel msg -> Channel msg
 onClose valueToMsg channel =
