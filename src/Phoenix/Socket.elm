@@ -9,7 +9,8 @@ module Phoenix.Socket exposing (init, withLongPoll, Socket, listen, join, update
 
 import Phoenix.Channel as Channel exposing (Channel)
 import Phoenix.ChannelHelper as ChannelHelper
-import Phoenix.Message as Message exposing (Msg(..))
+import Phoenix.Message as Message exposing (Msg)
+import Phoenix.Internal.Message as InternalMessage exposing (InternalMessage(..))
 import Phoenix.Event as Event exposing (Event)
 import Phoenix.Push as Push exposing (Push)
 import Phoenix.Internal.WebSocket as InternalWebSocket
@@ -77,18 +78,23 @@ listen socket toExternalAppMsgFn =
     case socket.transport of
         WebSocket ->
             InternalWebSocket.listen socket.endPoint socket.channels toExternalAppMsgFn
+
         LongPoll ->
             let
                 freq =
                     case socket.readyState of
                         Closed ->
                             second
+
                         Open ->
                             (5 * second)
+
                         _ ->
                             (10 * second)
             in
-            Sub.map toExternalAppMsgFn (Time.every freq LongPollTick)
+                (Time.every freq LongPollTick)
+                    |> Sub.map Message.toInternalMsg
+                    |> Sub.map toExternalAppMsgFn
 
 
 addChannel : Channel msg -> Socket msg -> Socket msg
@@ -114,23 +120,26 @@ join channel socket =
 doJoin : Channel msg -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
 doJoin channel socket =
     let
-        eventName = "phx_join"
+        eventName =
+            "phx_join"
+
         updatedChannel =
             Channel.setJoiningState socket.ref channel
+
         event =
             Event.init eventName channel.topic channel.payload (Just socket.ref)
 
         updateSocket =
             socket
-            |> addEvent event
-            |> addChannel updatedChannel
-
+                |> addEvent event
+                |> addChannel updatedChannel
     in
-       case socket.transport of
-           WebSocket ->
-               (updateSocket, InternalWebSocket.send socket.endPoint event)
-           LongPoll ->
-               (updateSocket, LongPoll.send socket.endPoint socket.longPollToken event)
+        case socket.transport of
+            WebSocket ->
+                ( updateSocket, InternalWebSocket.send socket.endPoint event )
+
+            LongPoll ->
+                ( updateSocket, LongPoll.send socket.endPoint socket.longPollToken event )
 
 
 addEvent : Event -> Socket msg -> Socket msg
@@ -142,7 +151,7 @@ addEvent event socket =
 -}
 update : (Msg msg -> msg) -> Msg msg -> Socket msg -> ( Socket msg, Cmd msg )
 update toExternalAppMsgFn msg socket =
-    case msg of
+    case Message.extractInternalMsg msg of
         ChannelSuccessfullyJoined channel response ->
             let
                 updatedChannel =
@@ -166,13 +175,16 @@ update toExternalAppMsgFn msg socket =
         LongPollTick _ ->
             case socket.readyState of
                 Open ->
-                    ({socket| readyState= Connecting}, Cmd.map toExternalAppMsgFn (LongPoll.poll socket.endPoint socket.longPollToken))
+                    ( { socket | readyState = Connecting }, Cmd.map toExternalAppMsgFn (LongPoll.poll socket.endPoint socket.longPollToken) )
+
                 Connecting ->
-                    (socket, Cmd.none)
+                    ( socket, Cmd.none )
+
                 Closing ->
-                    (socket, Cmd.none)
+                    ( socket, Cmd.none )
+
                 Closed ->
-                    ({socket| readyState= Connecting}, Cmd.map toExternalAppMsgFn (LongPoll.poll socket.endPoint socket.longPollToken))
+                    ( { socket | readyState = Connecting }, Cmd.map toExternalAppMsgFn (LongPoll.poll socket.endPoint socket.longPollToken) )
 
         LongPollPolled (Ok longPollEvent) ->
             case longPollEvent.status of
@@ -182,29 +194,35 @@ update toExternalAppMsgFn msg socket =
                             case longPollEvent.messages of
                                 Just [] ->
                                     Cmd.none
+
                                 Nothing ->
                                     Cmd.none
+
                                 Just messsages ->
                                     LongPoll.externalMsgs socket.channels toExternalAppMsgFn messsages
                     in
-                       ({socket | readyState = Closed}, command)
+                        ( { socket | readyState = Closed }, command )
+
                 401 ->
                     -- TODO: send onJoinError Msg
-                    (socket, Cmd.none)
+                    ( socket, Cmd.none )
+
                 410 ->
                     -- connecten is opened
-                    ({socket | readyState = Open, longPollToken = longPollEvent.token}, Cmd.none)
+                    ( { socket | readyState = Open, longPollToken = longPollEvent.token }, Cmd.none )
+
                 204 ->
                     -- no content
-                    ({socket | readyState = Open}, Cmd.none)
+                    ( { socket | readyState = Open }, Cmd.none )
+
                 _ ->
-                    ({socket | readyState = Closed}, Cmd.none)
+                    ( { socket | readyState = Closed }, Cmd.none )
+
         LongPollPolled (Err _) ->
-            ({socket | readyState = Closed}, Cmd.none)
+            ( { socket | readyState = Closed }, Cmd.none )
 
         LongPollSent (Err _) ->
-            (socket, Cmd.none)
-
+            ( socket, Cmd.none )
 
         _ ->
             ( socket, Cmd.none )
@@ -215,11 +233,15 @@ update toExternalAppMsgFn msg socket =
 push : Push msg -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
 push pushRecord socket =
     let
-        event = Event pushRecord.event pushRecord.channel.topic pushRecord.payload (Just socket.ref)
-        updateSocket = addEvent event socket
+        event =
+            Event pushRecord.event pushRecord.channel.topic pushRecord.payload (Just socket.ref)
+
+        updateSocket =
+            addEvent event socket
     in
-       case socket.transport of
-           WebSocket ->
-               (updateSocket, InternalWebSocket.send socket.endPoint event)
-           LongPoll ->
-               (updateSocket, Cmd.none)
+        case socket.transport of
+            WebSocket ->
+                ( updateSocket, InternalWebSocket.send socket.endPoint event )
+
+            LongPoll ->
+                ( updateSocket, Cmd.none )
