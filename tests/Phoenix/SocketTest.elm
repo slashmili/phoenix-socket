@@ -213,6 +213,37 @@ suite =
 
                         _ ->
                             Expect.fail "couldn't find the channel!"
+            , test "ChannelClosed when server closes channel" <|
+                \_ ->
+                    let
+                        channel =
+                            "chat:room233"
+                                |> Channel.init
+                                |> Channel.onClose ChannelGotClosed
+
+                        value =
+                            Encode.object []
+
+                        ( socket, _ ) =
+                            basicEndpoint
+                                |> Socket.init
+                                |> Socket.join channel
+
+                        msg =
+                            Message.toInternalMsg (ChannelClosed channel value)
+
+                        ( updatedSocket, _ ) =
+                            Socket.update PhoenixMsg msg socket
+
+                        errChannel =
+                            Channel.findChannel channel.topic updatedSocket.channels
+                    in
+                    case errChannel of
+                        Just ec ->
+                            Expect.equal (Channel.isClosed ec) True
+
+                        _ ->
+                            Expect.fail "couldn't find the channel!"
             , test "Heartbeat" <|
                 \_ ->
                     let
@@ -313,6 +344,7 @@ type TestMsg
     | JoinedChannel Value
     | FailedToJoinedChannel Value
     | ChannelGotError Value
+    | ChannelGotClosed Value
 
 
 endPointFuzzer : Fuzzer String
