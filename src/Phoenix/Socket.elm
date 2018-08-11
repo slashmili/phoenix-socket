@@ -1,11 +1,11 @@
-module Phoenix.Socket exposing (Socket, init, join, listen, push, update)
+module Phoenix.Socket exposing (Socket, init, join, listen, push, update, withLongPoll)
 
 {-|
 
 
 # This module provides an interface for connecting to Phoenix Socket
 
-@docs Socket, init, update, join, listen, push
+@docs Socket, init, update, join, listen, push, withLongPoll
 
 -}
 
@@ -25,6 +25,13 @@ type Transport
     | LongPoll
 
 
+type State
+    = Connecting
+    | Open
+    | Closing
+    | Closed
+
+
 {-| Socket model
 -}
 type alias Socket msg =
@@ -36,7 +43,9 @@ type alias Socket msg =
     , heartbeatIntervalSeconds : Float
     , heartbeatTimestamp : Float
     , heartbeatReplyTimestamp : Float
+    , longPollToken : Maybe.Maybe String
     , ref : Int
+    , readyState : State
     }
 
 
@@ -53,6 +62,17 @@ init endPoint =
     , heartbeatTimestamp = 0
     , heartbeatReplyTimestamp = 0
     , ref = 1
+    , longPollToken = Nothing
+    , readyState = Closed
+    }
+
+
+{-| withLongPoll
+-}
+withLongPoll : Socket msg -> Socket msg
+withLongPoll socket =
+    { socket
+        | transport = LongPoll
     }
 
 

@@ -19,6 +19,7 @@ module Phoenix.Channel
         , setJoinedState
         , setJoiningState
         , updateChannel
+        , updateChannelDict
         )
 
 {-|
@@ -26,7 +27,7 @@ module Phoenix.Channel
 
 # This module is keeping states related to channel
 
-@docs Channel, init, setJoiningState, setClosedState, setJoinedState, setErroredState, isOngoing, isClosed, isJoined, isErrored, addChannel, updateChannel, findChannelWithRef, findChannel, on, onJoin, onJoinError, onError, onClose
+@docs Channel, init, setJoiningState, setClosedState, setJoinedState, setErroredState, isOngoing, isClosed, isJoined, isErrored, addChannel, updateChannel, updateChannelDict, findChannelWithRef, findChannel, on, onJoin, onJoinError, onError, onClose
 
 -}
 
@@ -225,3 +226,9 @@ on event cb channel =
 receive : String -> (Value -> msg) -> Channel msg -> Channel msg
 receive event valueToMsg channel =
     { channel | receive = Dict.insert event valueToMsg channel.receive }
+
+
+{-| -}
+updateChannelDict : Channel msg -> Dict String (Channel msg) -> Dict String (Channel msg)
+updateChannelDict channel channels =
+    updateChannel channel channels
