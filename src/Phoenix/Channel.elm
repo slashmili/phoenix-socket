@@ -4,11 +4,14 @@ module Phoenix.Channel
         , init
         , setJoiningState
         , isOngoing
+        , isJoined
+        , isErrored
         , addChannel
         , updateChannel
         , findChannelWithRef
         , findChannel
         , setJoinedState
+        , setErroredState
         , on
         , onJoin
         , onJoinError
@@ -19,7 +22,7 @@ module Phoenix.Channel
 {-|
 # This module is keeping states related to channel
 
-@docs Channel, init, setJoiningState, setJoinedState, isOngoing, addChannel, updateChannel, findChannelWithRef, findChannel, on, onJoin, onJoinError, onError, onClose
+@docs Channel, init, setJoiningState, setJoinedState, setErroredState, isOngoing, isJoined, isErrored, addChannel, updateChannel, findChannelWithRef, findChannel, on, onJoin, onJoinError, onError, onClose
 -}
 
 import Json.Decode as Decode exposing (Value)
@@ -78,6 +81,13 @@ setJoinedState channel =
     { channel | state = Joined, joinRef = Nothing }
 
 
+{-| Sets stats to Errored
+-}
+setErroredState : Channel msg -> Channel msg
+setErroredState channel =
+    { channel | state = Errored, joinRef = Nothing }
+
+
 {-| Returns true if state is Joined Joining
 -}
 isOngoing : Channel msg -> Bool
@@ -86,6 +96,30 @@ isOngoing channel =
         True
     else
         False
+
+
+{-| Is this channel joined successfully ?
+-}
+isJoined : Channel msg -> Bool
+isJoined channel =
+    case channel.state of
+        Joined ->
+            True
+
+        _ ->
+            False
+
+
+{-| Is this channel faild to join
+-}
+isErrored : Channel msg -> Bool
+isErrored channel =
+    case channel.state of
+        Errored ->
+            True
+
+        _ ->
+            False
 
 
 {-| Adds a channel to Dict of channels

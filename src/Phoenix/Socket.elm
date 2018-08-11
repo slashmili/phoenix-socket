@@ -64,6 +64,56 @@ join channel socket =
             doJoin channel socket
 
 
+{-| Listens to socket
+-}
+listen : (Msg msg -> msg) -> Socket msg -> Sub msg
+listen toExternalAppMsgFn socket =
+    InternalWebSocket.listen socket.endPoint socket.channels toExternalAppMsgFn
+
+
+{-| Handles Phoenix Msg
+-}
+update : (Msg msg -> msg) -> Msg msg -> Socket msg -> ( Socket msg, Cmd msg )
+update toExternalAppMsgFn msg socket =
+    case Message.extractInternalMsg msg of
+        ChannelSuccessfullyJoined channel response ->
+            let
+                updatedChannel =
+                    Channel.setJoinedState channel
+
+                updateSocket =
+                    { socket | channels = Channel.updateChannel updatedChannel socket.channels }
+            in
+                ( updateSocket, Cmd.none )
+
+        ChannelFailedToJoin channel response ->
+            let
+                updatedChannel =
+                    Channel.setErroredState channel
+
+                updateSocket =
+                    { socket | channels = Channel.updateChannel updatedChannel socket.channels }
+            in
+                ( updateSocket, Cmd.none )
+
+        _ ->
+            ( socket, Cmd.none )
+
+
+{-| pushs a message
+-}
+push : Push msg -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
+push pushRecord socket =
+    let
+        event =
+            Event pushRecord.event pushRecord.channel.topic pushRecord.payload (Just socket.ref)
+
+        updateSocket =
+            addEvent event socket
+    in
+        ( updateSocket, InternalWebSocket.send socket.endPoint event )
+
+
 doJoin : Channel msg -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
 doJoin channel socket =
     let

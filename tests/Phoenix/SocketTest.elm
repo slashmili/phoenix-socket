@@ -6,6 +6,11 @@ import Test exposing (..)
 import Dict
 import Phoenix.Socket as Socket
 import Phoenix.Channel as Channel
+import Phoenix.Message as Message
+import Phoenix.Push as Push
+import Phoenix.Internal.Message as InternalMessage exposing (InternalMessage(..))
+import Json.Decode as Decode exposing (Value)
+import Json.Encode as Encode
 
 
 basicEndpoint =
@@ -88,12 +93,132 @@ suite =
                             Nothing ->
                                 Expect.fail "didn't find event"
             ]
-        , describe "join a channel"
-            [ test "add channel to socket channel list" <|
+        , describe "listen to socket"
+            [ test "return subscription" <|
                 \_ ->
-                    Expect.equal 1 1
+                    let
+                        socket =
+                            Socket.init basicEndpoint
+
+                        sub =
+                            Socket.listen PhoenixMsg socket
+                    in
+                        Expect.notEqual sub Sub.none
+            ]
+        , describe "updates socket model"
+            [ test "none" <|
+                \_ ->
+                    let
+                        socket =
+                            basicEndpoint
+                                |> Socket.init
+
+                        msg =
+                            Message.toInternalMsg NoOp
+
+                        ( updatedSocket, cmd ) =
+                            Socket.update PhoenixMsg msg socket
+                    in
+                        Expect.equal cmd Cmd.none
+            , test "ChannelSuccessfullyJoined" <|
+                \_ ->
+                    let
+                        channel =
+                            "chat:room233"
+                                |> Channel.init
+                                |> Channel.onJoin JoinedChannel
+
+                        value =
+                            Encode.object []
+
+                        ( socket, _ ) =
+                            basicEndpoint
+                                |> Socket.init
+                                |> Socket.join channel
+
+                        msg =
+                            Message.toInternalMsg (ChannelSuccessfullyJoined channel value)
+
+                        ( updatedSocket, _ ) =
+                            Socket.update PhoenixMsg msg socket
+
+                        joinedChannel =
+                            Channel.findChannel channel.topic updatedSocket.channels
+                    in
+                        case joinedChannel of
+                            Just jc ->
+                                Expect.equal (Channel.isJoined jc) True
+
+                            _ ->
+                                Expect.fail "couldn't find the channel!"
+            , test "ChannelFailedToJoin" <|
+                \_ ->
+                    let
+                        channel =
+                            "chat:room233"
+                                |> Channel.init
+                                |> Channel.onJoinError FailedToJoinedChannel
+
+                        value =
+                            Encode.object []
+
+                        ( socket, _ ) =
+                            basicEndpoint
+                                |> Socket.init
+                                |> Socket.join channel
+
+                        msg =
+                            Message.toInternalMsg (ChannelFailedToJoin channel value)
+
+                        ( updatedSocket, _ ) =
+                            Socket.update PhoenixMsg msg socket
+
+                        errChannel =
+                            Channel.findChannel channel.topic updatedSocket.channels
+                    in
+                        case errChannel of
+                            Just ec ->
+                                Expect.equal (Channel.isErrored ec) True
+
+                            _ ->
+                                Expect.fail "couldn't find the channel!"
+            ]
+        , describe "pushs event"
+            [ test "push and event" <|
+                \_ ->
+                    let
+                        channel =
+                            "chat:room233"
+                                |> Channel.init
+
+                        socket =
+                            basicEndpoint
+                                |> Socket.init
+
+                        payload =
+                            Encode.object [ ( "name", Encode.string "foo" ) ]
+
+                        push =
+                            Push.init "hello" channel
+                                |> Push.withPayload payload
+
+                        ( updatedSocket, _ ) =
+                            (Socket.push push socket)
+                    in
+                        case Dict.get 1 updatedSocket.pushedEvents of
+                            Just event ->
+                                Expect.equal event.payload payload
+
+                            _ ->
+                                Expect.fail "couldn't find pushed event"
             ]
         ]
+
+
+type TestMsg
+    = PhoenixMsg (Message.Msg TestMsg)
+    | JoinedChannel Value
+    | FailedToJoinedChannel Value
 
 
 endPointFuzzer : Fuzzer String
