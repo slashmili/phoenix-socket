@@ -5,6 +5,7 @@ module Phoenix.Channel
         , findChannel
         , findChannelWithRef
         , init
+        , isClosed
         , isErrored
         , isJoined
         , isOngoing
@@ -24,7 +25,7 @@ module Phoenix.Channel
 
 # This module is keeping states related to channel
 
-@docs Channel, init, setJoiningState, setJoinedState, setErroredState, isOngoing, isJoined, isErrored, addChannel, updateChannel, findChannelWithRef, findChannel, on, onJoin, onJoinError, onError, onClose
+@docs Channel, init, setJoiningState, setJoinedState, setErroredState, isOngoing, isClosed, isJoined, isErrored, addChannel, updateChannel, findChannelWithRef, findChannel, on, onJoin, onJoinError, onError, onClose
 
 -}
 
@@ -105,6 +106,18 @@ isJoined : Channel msg -> Bool
 isJoined channel =
     case channel.state of
         Joined ->
+            True
+
+        _ ->
+            False
+
+
+{-| Is this channel closed ?
+-}
+isClosed : Channel msg -> Bool
+isClosed channel =
+    case channel.state of
+        Closed ->
             True
 
         _ ->

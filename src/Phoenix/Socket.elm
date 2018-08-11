@@ -105,6 +105,16 @@ update toExternalAppMsgFn msg socket =
             in
             ( updateSocket, Cmd.none )
 
+        ChannelError channel response ->
+            let
+                updatedChannel =
+                    Channel.setErroredState channel
+
+                updateSocket =
+                    { socket | channels = Channel.updateChannel updatedChannel socket.channels }
+            in
+            ( updateSocket, Cmd.none )
+
         Heartbeat heartbeatTimestamp ->
             let
                 ( updateSocket, cmd ) =

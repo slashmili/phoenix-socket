@@ -182,6 +182,37 @@ suite =
 
                         _ ->
                             Expect.fail "couldn't find the channel!"
+            , test "ChannelError when receive event phx_error with topic of channel" <|
+                \_ ->
+                    let
+                        channel =
+                            "chat:room233"
+                                |> Channel.init
+                                |> Channel.onError ChannelGotError
+
+                        value =
+                            Encode.object []
+
+                        ( socket, _ ) =
+                            basicEndpoint
+                                |> Socket.init
+                                |> Socket.join channel
+
+                        msg =
+                            Message.toInternalMsg (ChannelError channel value)
+
+                        ( updatedSocket, _ ) =
+                            Socket.update PhoenixMsg msg socket
+
+                        errChannel =
+                            Channel.findChannel channel.topic updatedSocket.channels
+                    in
+                    case errChannel of
+                        Just ec ->
+                            Expect.equal (Channel.isErrored ec) True
+
+                        _ ->
+                            Expect.fail "couldn't find the channel!"
             , test "Heartbeat" <|
                 \_ ->
                     let
@@ -281,6 +312,7 @@ type TestMsg
     = PhoenixMsg (Message.Msg TestMsg)
     | JoinedChannel Value
     | FailedToJoinedChannel Value
+    | ChannelGotError Value
 
 
 endPointFuzzer : Fuzzer String

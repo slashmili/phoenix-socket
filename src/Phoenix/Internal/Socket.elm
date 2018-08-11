@@ -87,13 +87,13 @@ mapExternalEvents channels event =
 
         "phx_error" ->
             channels
-                |> channelWithRef
+                |> channel
                 |> Maybe.andThen (\chan -> Just (ChannelHelper.onErrorCommand event.payload chan))
                 |> Maybe.withDefault Message.none
 
         "phx_close" ->
             channels
-                |> channelWithRef
+                |> channel
                 |> Maybe.andThen (\chan -> Just (ChannelHelper.onClosedCommand event.payload chan))
                 |> Maybe.withDefault Message.none
 
