@@ -13,24 +13,21 @@ import Phoenix.Push as Push exposing (Push)
 import Json.Encode as Encode
 
 
-{-|
-What t?
+{-| Listens to socket change and timers
 -}
 listen : (Msg msg -> msg) -> Socket msg -> Sub msg
 listen toExternalAppMsgFn socket =
     Socket.listen toExternalAppMsgFn socket
 
 
-{-|
-update
+{-| Updates socket model and send messages
 -}
 update : (Msg msg -> msg) -> Msg msg -> Socket msg -> ( Socket msg, Cmd msg )
 update toExternalAppMsgFn msg socket =
     Socket.update toExternalAppMsgFn msg socket
 
 
-{-|
-join
+{-| Joins a channel
 -}
 join : (Msg msg -> msg) -> Channel msg -> Socket msg -> ( Socket msg, Cmd msg )
 join toExternalAppMsgFn channel socket =
@@ -41,7 +38,7 @@ join toExternalAppMsgFn channel socket =
         ( updateSocket, Cmd.map toExternalAppMsgFn phxCmd )
 
 
-{-| push
+{-| Pushes a a message
 -}
 push : (Msg msg -> msg) -> Push msg -> Socket msg -> ( Socket msg, Cmd msg )
 push toExternalAppMsgFn pushRecord socket =
