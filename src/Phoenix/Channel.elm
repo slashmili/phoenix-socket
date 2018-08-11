@@ -5,14 +5,21 @@ module Phoenix.Channel
         , setJoiningState
         , isOngoing
         , addChannel
+        , updateChannel
         , findChannelWithRef
         , findChannel
+        , setJoinedState
+        , on
+        , onJoin
+        , onJoinError
+        , onError
+        , onClose
         )
 
 {-|
 # This module is keeping states related to channel
 
-@docs Channel, init, setJoiningState, isOngoing, addChannel, findChannelWithRef, findChannel
+@docs Channel, init, setJoiningState, setJoinedState, isOngoing, addChannel, updateChannel, findChannelWithRef, findChannel, on, onJoin, onJoinError, onError, onClose
 -}
 
 import Json.Decode as Decode exposing (Value)
@@ -64,6 +71,13 @@ setJoiningState ref channel =
     { channel | state = Joining, joinRef = Just ref }
 
 
+{-| Sets stats to joined state
+-}
+setJoinedState : Channel msg -> Channel msg
+setJoinedState channel =
+    { channel | state = Joined, joinRef = Nothing }
+
+
 {-| Returns true if state is Joined Joining
 -}
 isOngoing : Channel msg -> Bool
@@ -101,3 +115,50 @@ findChannelWithRef topic joinRef channels =
 findChannel : String -> Dict String (Channel msg) -> Maybe (Channel msg)
 findChannel topic channels =
     Dict.get topic channels
+
+
+{-| Updates channel in the given Dict
+-}
+updateChannel : Channel msg -> Dict String (Channel msg) -> Dict String (Channel msg)
+updateChannel channel channels =
+    Dict.insert channel.topic channel channels
+
+
+{-| Triggers this message to send when joined a channel
+-}
+onJoin : (Value -> msg) -> Channel msg -> Channel msg
+onJoin valueToMsg channel =
+    receive "ok" valueToMsg channel
+
+
+{-| Triggers this message to send when failed to join a channel
+-}
+onJoinError : (Value -> msg) -> Channel msg -> Channel msg
+onJoinError valueToMsg channel =
+    receive "join_error" valueToMsg channel
+
+
+{-| Triggers this message when failed to send join command on the connection
+-}
+onError : (Value -> msg) -> Channel msg -> Channel msg
+onError valueToMsg channel =
+    receive "error" valueToMsg channel
+
+
+{-| Triggers this message when channel is closed
+-}
+onClose : (Value -> msg) -> Channel msg -> Channel msg
+onClose valueToMsg channel =
+    receive "close" valueToMsg channel
+
+
+{-| Triggers this message when event is received
+-}
+on : String -> (Value -> msg) -> Channel msg -> Channel msg
+on event cb channel =
+    { channel | on = Dict.insert event cb channel.on }
+
+
+receive : String -> (Value -> msg) -> Channel msg -> Channel msg
+receive event valueToMsg channel =
+    { channel | receive = Dict.insert event valueToMsg channel.receive }

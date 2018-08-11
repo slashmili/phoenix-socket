@@ -1,17 +1,19 @@
-module Phoenix.Socket exposing (Socket, init, join)
+module Phoenix.Socket exposing (Socket, init, update, join, listen, push)
 
 {-|
 # This module provides an interface for connecting to Phoenix Socket
 
-@docs Socket, init, join
+@docs Socket, init, update, join, listen, push
 -}
 
 import Dict exposing (Dict)
 import Phoenix.Serializer exposing (Serializer(..))
 import Phoenix.Internal.WebSocket as InternalWebSocket
 import Phoenix.Message as Message exposing (Msg)
+import Phoenix.Internal.Message as InternalMessage exposing (InternalMessage(..))
 import Phoenix.Channel as Channel exposing (Channel)
 import Phoenix.Event as Event exposing (Event)
+import Phoenix.Push as Push exposing (Push)
 
 
 type Transport
