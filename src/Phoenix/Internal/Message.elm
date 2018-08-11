@@ -5,6 +5,7 @@ import Http
 import Time exposing (Time)
 import Phoenix.Channel exposing (Channel)
 import Phoenix.Event exposing (Event)
+import Time exposing (Time)
 
 
 type InternalMessage msg
@@ -13,6 +14,7 @@ type InternalMessage msg
     | ChannelFailedToJoin (Channel msg) Decode.Value
     | ChannelClosed (Channel msg) Decode.Value
     | ChannelError (Channel msg) Decode.Value
+    | Heartbeat Time
 
 
 channelSuccessfullyJoined : Channel msg -> Decode.Value -> InternalMessage msg

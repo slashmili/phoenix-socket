@@ -182,6 +182,41 @@ suite =
 
                             _ ->
                                 Expect.fail "couldn't find the channel!"
+            , test "Heartbeat" <|
+                \_ ->
+                    let
+                        channel =
+                            "chat:room233"
+                                |> Channel.init
+
+                        value =
+                            Encode.object []
+
+                        msg =
+                            Message.toInternalMsg (Heartbeat 19292922)
+
+                        socket =
+                            basicEndpoint
+                                |> Socket.init
+                                |> Socket.join channel
+                                |> Tuple.first
+                                |> Socket.update PhoenixMsg msg
+                                |> Tuple.first
+                                |> Socket.update PhoenixMsg msg
+                                |> Tuple.first
+
+                        errChannel =
+                            Channel.findChannel channel.topic socket.channels
+
+                        event =
+                            Dict.get 2 socket.pushedEvents
+                    in
+                        case Dict.get 2 socket.pushedEvents of
+                            Just event ->
+                                Expect.equal event.event "heartbeat"
+
+                            _ ->
+                                Expect.fail "couldn't find second heartbeat"
             ]
         , describe "pushs event"
             [ test "push and event" <|
@@ -191,9 +226,31 @@ suite =
                             "chat:room233"
                                 |> Channel.init
 
+                        payload =
+                            Encode.object [ ( "name", Encode.string "foo" ) ]
+
+                        push =
+                            Push.init "hello" channel
+                                |> Push.withPayload payload
+
                         socket =
                             basicEndpoint
                                 |> Socket.init
+                                |> Socket.push push
+                                |> Tuple.first
+                    in
+                        case Dict.get 1 socket.pushedEvents of
+                            Just event ->
+                                Expect.equal event.payload payload
+
+                            _ ->
+                                Expect.fail "couldn't find pushed event"
+            , test "push second event" <|
+                \_ ->
+                    let
+                        channel =
+                            "chat:room233"
+                                |> Channel.init
 
                         payload =
                             Encode.object [ ( "name", Encode.string "foo" ) ]
@@ -202,15 +259,20 @@ suite =
                             Push.init "hello" channel
                                 |> Push.withPayload payload
 
-                        ( updatedSocket, _ ) =
-                            (Socket.push push socket)
+                        socket =
+                            basicEndpoint
+                                |> Socket.init
+                                |> Socket.push push
+                                |> Tuple.first
+                                |> Socket.push push
+                                |> Tuple.first
                     in
-                        case Dict.get 1 updatedSocket.pushedEvents of
+                        case Dict.get 2 socket.pushedEvents of
                             Just event ->
                                 Expect.equal event.payload payload
 
                             _ ->
-                                Expect.fail "couldn't find pushed event"
+                                Expect.fail "couldn't find second pushed event"
             ]
         ]
 

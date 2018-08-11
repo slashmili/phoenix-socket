@@ -14,6 +14,7 @@ import Phoenix.Internal.Message as InternalMessage exposing (InternalMessage(..)
 import Phoenix.Channel as Channel exposing (Channel)
 import Phoenix.Event as Event exposing (Event)
 import Phoenix.Push as Push exposing (Push)
+import Json.Encode as Encode
 
 
 type Transport
@@ -30,6 +31,7 @@ type alias Socket msg =
     , serializer : Serializer
     , transport : Transport
     , pushedEvents : Dict Int Event
+    , heartbeatIntervalSeconds : Float
     , ref : Int
     }
 
@@ -44,6 +46,7 @@ init endPoint =
     , serializer = V1
     , transport = WebSocket
     , pushedEvents = Dict.empty
+    , heartbeatIntervalSeconds = 30
     , ref = 1
     }
 
@@ -68,7 +71,7 @@ join channel socket =
 -}
 listen : (Msg msg -> msg) -> Socket msg -> Sub msg
 listen toExternalAppMsgFn socket =
-    InternalWebSocket.listen socket.endPoint socket.channels toExternalAppMsgFn
+    InternalWebSocket.listen socket.endPoint socket.channels socket.heartbeatIntervalSeconds toExternalAppMsgFn
 
 
 {-| Handles Phoenix Msg
@@ -96,6 +99,13 @@ update toExternalAppMsgFn msg socket =
             in
                 ( updateSocket, Cmd.none )
 
+        Heartbeat _ ->
+            let
+                ( updateSocket, cmd ) =
+                    heartbeat socket
+            in
+                ( updateSocket, Cmd.map toExternalAppMsgFn cmd )
+
         _ ->
             ( socket, Cmd.none )
 
@@ -107,7 +117,13 @@ push pushRecord socket =
     let
         event =
             Event pushRecord.event pushRecord.channel.topic pushRecord.payload (Just socket.ref)
+    in
+        doPush event socket
 
+
+doPush : Event -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
+doPush event socket =
+    let
         updateSocket =
             addEvent event socket
     in
@@ -144,3 +160,12 @@ addEvent event socket =
 addChannel : Channel msg -> Socket msg -> Socket msg
 addChannel channel socket =
     { socket | channels = Channel.addChannel channel socket.channels }
+
+
+heartbeat : Socket msg -> ( Socket msg, Cmd (Msg msg) )
+heartbeat socket =
+    let
+        event =
+            Event.init "heartbeat" "phoenix" (Encode.object []) (Just socket.ref)
+    in
+        doPush event socket

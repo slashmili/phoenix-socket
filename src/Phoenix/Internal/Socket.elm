@@ -8,6 +8,7 @@ import Phoenix.Event as Event exposing (Event)
 import WebSocket as NativeWebSocket
 import Json.Encode as Encode
 import Dict
+import Time
 
 
 mapMaybeInternalEvents : Dict.Dict String (Channel msg) -> Maybe Event -> Msg msg
@@ -112,3 +113,10 @@ handleInternalPhxReply channels event =
 
         Nothing ->
             Message.none
+
+
+heartbeatSubscription : Float -> Sub (Msg msg)
+heartbeatSubscription heartbeatIntervalSeconds =
+    Heartbeat
+        |> Time.every (Time.second * heartbeatIntervalSeconds)
+        |> Sub.map Message.toInternalMsg

@@ -10,8 +10,8 @@ import Json.Encode as Encode
 import Dict
 
 
-listen : String -> Dict.Dict String (Channel msg) -> (Msg msg -> msg) -> Sub msg
-listen endPoint channels toExternalAppMsgFn =
+listen : String -> Dict.Dict String (Channel msg) -> Float -> (Msg msg -> msg) -> Sub msg
+listen endPoint channels heartbeatIntervalSeconds toExternalAppMsgFn =
     let
         mappedMsg =
             Message.mapAll toExternalAppMsgFn
@@ -20,6 +20,7 @@ listen endPoint channels toExternalAppMsgFn =
             Sub.batch
                 [ internalMsgs endPoint channels
                 , externalMsgs endPoint channels
+                , heartbeatSubscription heartbeatIntervalSeconds
                 ]
     in
         Sub.map mappedMsg subs
@@ -33,6 +34,11 @@ internalMsgs endPoint channels =
 externalMsgs : String -> Dict.Dict String (Channel msg) -> Sub (Msg msg)
 externalMsgs endPoint channels =
     Sub.map (SocketHelper.mapMaybeExternalEvents channels) (phoenixMessages endPoint)
+
+
+heartbeatSubscription : Float -> Sub (Msg msg)
+heartbeatSubscription heartbeatIntervalSeconds =
+    SocketHelper.heartbeatSubscription heartbeatIntervalSeconds
 
 
 phoenixMessages : String -> Sub (Maybe Event)
