@@ -1,17 +1,20 @@
-module Phoenix.Message exposing (Msg, mapAll, none, toInternalMsg, toExternalMsg, extractInternalMsg)
+module Phoenix.Message exposing (Msg, extractExternalMsg, extractInternalMsg, mapAll, none, toExternalMsg, toInternalMsg)
 
 {-|
+
+
 # This module provides Msg that the package handles
 
-@docs Msg, mapAll, none, toInternalMsg, toExternalMsg, extractInternalMsg
+@docs Msg, mapAll, none, toInternalMsg, toExternalMsg, extractInternalMsg, extractExternalMsg
+
 -}
 
-import Json.Decode as Decode
 import Http
-import Time exposing (Time)
+import Json.Decode as Decode
 import Phoenix.Channel exposing (Channel)
 import Phoenix.Event exposing (Event)
 import Phoenix.Internal.Message as InternalMessage exposing (InternalMessage(..))
+import Time exposing (Time)
 
 
 {-| This Msg should be used in user's main app
@@ -29,8 +32,7 @@ type Msg msg
     | InternalMsg (InternalMessage msg)
 
 
-{-|
--}
+{-| -}
 mapAll : (Msg msg -> msg) -> Msg msg -> msg
 mapAll fn internalMsg =
     case internalMsg of
@@ -41,29 +43,25 @@ mapAll fn internalMsg =
             fn internalMsg
 
 
-{-|
--}
+{-| -}
 none : Msg msg
 none =
     NoOp
 
 
-{-|
--}
+{-| -}
 toExternalMsg : msg -> Msg msg
 toExternalMsg externalMsg =
     ExternalMsg externalMsg
 
 
-{-|
--}
+{-| -}
 toInternalMsg : InternalMessage msg -> Msg msg
 toInternalMsg internalMsg =
     InternalMsg internalMsg
 
 
-{-|
--}
+{-| -}
 extractInternalMsg : Msg msg -> InternalMessage msg
 extractInternalMsg publicMsg =
     case publicMsg of
@@ -75,3 +73,14 @@ extractInternalMsg publicMsg =
 
         NoOp ->
             InternalMessage.none
+
+
+{-| -}
+extractExternalMsg : Msg msg -> Maybe msg
+extractExternalMsg publicMsg =
+    case publicMsg of
+        ExternalMsg msg ->
+            Just msg
+
+        _ ->
+            Nothing

@@ -1,4 +1,4 @@
-module Phoenix.Event exposing (Event, init, decode, encode, decodeReply, decoder, encoder)
+module Phoenix.Event exposing (Event, decode, decodeReply, decoder, encode, encoder, init)
 
 import Json.Decode as Decode exposing (Decoder, field, maybe)
 import Json.Encode as Encode
@@ -10,6 +10,7 @@ type alias Event =
     , payload : Decode.Value
     , ref : Maybe Int
     }
+
 
 init : String -> String -> Decode.Value -> Maybe Int -> Event
 init event topic payload ref =
@@ -50,23 +51,31 @@ maybeInt int_ =
         |> Maybe.map Encode.int
         |> Maybe.withDefault Encode.null
 
+
 replyDecoder : Decode.Decoder (Result Decode.Value Decode.Value)
 replyDecoder =
     Decode.map2 statusToResult
-    (field "status" Decode.string)
-    (field "response" Decode.value)
+        (field "status" Decode.string)
+        (field "response" Decode.value)
+
 
 decodeReply : Decode.Value -> Result Decode.Value Decode.Value
 decodeReply payload =
     case Decode.decodeValue replyDecoder payload of
-        Ok (Ok response) -> Ok response
-        Ok (Err response) -> Err response
-        Err errMsg -> Err (Encode.object [("reason", Encode.string errMsg)])
+        Ok (Ok response) ->
+            Ok response
 
-statusToResult: String -> Decode.Value -> Result Decode.Value Decode.Value
-statusToResult status response=
+        Ok (Err response) ->
+            Err response
+
+        Err errMsg ->
+            Err (Encode.object [ ( "reason", Encode.string errMsg ) ])
+
+
+statusToResult : String -> Decode.Value -> Result Decode.Value Decode.Value
+statusToResult status response =
     if status == "ok" then
-       Ok response
-   else
-       Err response
+        Ok response
 
+    else
+        Err response

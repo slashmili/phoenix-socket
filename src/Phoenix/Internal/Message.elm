@@ -1,11 +1,10 @@
-module Phoenix.Internal.Message exposing (InternalMessage(..), channelSuccessfullyJoined, channelFailedToJoin, none, channelClosed, channelError)
+module Phoenix.Internal.Message exposing (InternalMessage(..), channelClosed, channelError, channelFailedToJoin, channelSuccessfullyJoined, none)
 
-import Json.Decode as Decode
 import Http
-import Time exposing (Time)
+import Json.Decode as Decode
 import Phoenix.Channel exposing (Channel)
 import Phoenix.Event exposing (Event)
-import Phoenix.Internal.LongPollEvent exposing (LongPollEvent)
+import Time exposing (Time)
 
 
 type InternalMessage msg
@@ -14,9 +13,8 @@ type InternalMessage msg
     | ChannelFailedToJoin (Channel msg) Decode.Value
     | ChannelClosed (Channel msg) Decode.Value
     | ChannelError (Channel msg) Decode.Value
-    | LongPollTick Time
-    | LongPollSent (Result Http.Error LongPollEvent)
-    | LongPollPolled (Result Http.Error LongPollEvent)
+    | HeartbeatReply
+    | Heartbeat Time
 
 
 channelSuccessfullyJoined : Channel msg -> Decode.Value -> InternalMessage msg

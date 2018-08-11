@@ -1,7 +1,7 @@
 module Phoenix.Push exposing (Push, init, withPayload)
 
-import Phoenix.Channel exposing (Channel)
 import Json.Encode as Encode
+import Phoenix.Channel exposing (Channel)
 
 
 type alias Push msg =

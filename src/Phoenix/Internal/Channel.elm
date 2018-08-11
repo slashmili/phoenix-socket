@@ -1,10 +1,10 @@
-module Phoenix.ChannelHelper exposing (onJoinedCommand, onFailedToJoinCommand, onCustomCommand, onClosedCommand, onErrorCommand)
+module Phoenix.Internal.Channel exposing (onClosedCommand, onCustomCommand, onErrorCommand, onFailedToJoinCommand, onJoinedCommand)
 
+import Dict
+import Json.Decode as Decode
 import Phoenix.Channel as Channel exposing (Channel)
 import Phoenix.Message as Message exposing (Msg)
-import Json.Decode as Decode
 import Task
-import Dict
 
 
 onReceiveMsg : String -> Decode.Value -> Channel msg -> Msg msg
