@@ -15,7 +15,12 @@ mapMaybeInternalEvents : Dict.Dict String (Channel msg) -> Maybe Event -> Msg ms
 mapMaybeInternalEvents channels maybeEvent =
     case maybeEvent of
         Just event ->
-            mapInternalEvents channels event
+            case ( event.topic, event.event ) of
+                ( "phoenix", "phx_reply" ) ->
+                    Message.toInternalMsg HeartbeatReply
+
+                _ ->
+                    mapInternalEvents channels event
 
         Nothing ->
             Message.none

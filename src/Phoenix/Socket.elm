@@ -32,6 +32,8 @@ type alias Socket msg =
     , transport : Transport
     , pushedEvents : Dict Int Event
     , heartbeatIntervalSeconds : Float
+    , heartbeatTimestamp : Float
+    , heartbeatReplyTimestamp : Float
     , ref : Int
     }
 
@@ -47,6 +49,8 @@ init endPoint =
     , transport = WebSocket
     , pushedEvents = Dict.empty
     , heartbeatIntervalSeconds = 30
+    , heartbeatTimestamp = 0
+    , heartbeatReplyTimestamp = 0
     , ref = 1
     }
 
@@ -99,12 +103,15 @@ update toExternalAppMsgFn msg socket =
             in
                 ( updateSocket, Cmd.none )
 
-        Heartbeat _ ->
+        Heartbeat heartbeatTimestamp ->
             let
                 ( updateSocket, cmd ) =
                     heartbeat socket
             in
-                ( updateSocket, Cmd.map toExternalAppMsgFn cmd )
+                ( { updateSocket | heartbeatTimestamp = heartbeatTimestamp }, Cmd.map toExternalAppMsgFn cmd )
+
+        HeartbeatReply ->
+            ( { socket | heartbeatReplyTimestamp = socket.heartbeatTimestamp }, Cmd.none )
 
         _ ->
             ( socket, Cmd.none )

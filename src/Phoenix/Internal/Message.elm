@@ -14,6 +14,7 @@ type InternalMessage msg
     | ChannelFailedToJoin (Channel msg) Decode.Value
     | ChannelClosed (Channel msg) Decode.Value
     | ChannelError (Channel msg) Decode.Value
+    | HeartbeatReply
     | Heartbeat Time
 
 
