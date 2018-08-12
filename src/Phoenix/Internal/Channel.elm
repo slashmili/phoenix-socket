@@ -4,6 +4,7 @@ import Dict
 import Json.Decode as Decode
 import Phoenix.Channel as Channel exposing (Channel)
 import Phoenix.Message as Message exposing (Msg)
+import Phoenix.Push exposing (Push)
 import Task
 
 

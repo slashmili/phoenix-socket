@@ -39,13 +39,15 @@ type alias Socket msg =
     , channels : Dict String (Channel msg)
     , serializer : Serializer
     , transport : Transport
-    , pushedEvents : Dict Int Event
+    , pushedEvents : Dict Int (Push msg)
     , heartbeatIntervalSeconds : Float
     , heartbeatTimestamp : Float
     , heartbeatReplyTimestamp : Float
     , longPollToken : Maybe.Maybe String
     , ref : Int
     , readyState : State
+    , withDebug : Bool
+    , withoutHeartbeat : Bool
     }
 
 
@@ -64,6 +66,8 @@ init endPoint =
     , ref = 1
     , longPollToken = Nothing
     , readyState = Closed
+    , withDebug = False
+    , withoutHeartbeat = False
     }
 
 
@@ -97,7 +101,7 @@ join channel socket =
 -}
 listen : (Msg msg -> msg) -> Socket msg -> Sub msg
 listen toExternalAppMsgFn socket =
-    InternalWebSocket.listen socket.endPoint socket.channels socket.heartbeatIntervalSeconds toExternalAppMsgFn
+    InternalWebSocket.listen socket.endPoint socket.channels socket.pushedEvents socket.heartbeatIntervalSeconds toExternalAppMsgFn
 
 
 {-| Handles Phoenix Msg
@@ -165,16 +169,16 @@ push : Push msg -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
 push pushRecord socket =
     let
         event =
-            Event pushRecord.event pushRecord.channel.topic pushRecord.payload (Just socket.ref)
+            Event pushRecord.event pushRecord.topic pushRecord.payload (Just socket.ref)
     in
-    doPush event socket
+    doPush event (Just pushRecord) socket
 
 
-doPush : Event -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
-doPush event socket =
+doPush : Event -> Maybe (Push msg) -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
+doPush event maybePush socket =
     let
         updateSocket =
-            addEvent event socket
+            addPushedEvent maybePush socket
     in
     ( updateSocket, InternalWebSocket.send socket.endPoint event )
 
@@ -193,7 +197,7 @@ doJoin channel socket =
 
         updateSocket =
             socket
-                |> addEvent event
+                |> addPushedEvent Nothing
                 |> addChannel updatedChannel
     in
     -- LongPoll ->
@@ -201,9 +205,23 @@ doJoin channel socket =
     ( updateSocket, InternalWebSocket.send socket.endPoint event )
 
 
-addEvent : Event -> Socket msg -> Socket msg
-addEvent event socket =
-    { socket | pushedEvents = Dict.insert socket.ref event socket.pushedEvents, ref = socket.ref + 1 }
+addPushedEvent : Maybe (Push msg) -> Socket msg -> Socket msg
+addPushedEvent maybePush socket =
+    let
+        pushedEvents =
+            case maybePush of
+                Just push ->
+                    case Dict.size push.on of
+                        0 ->
+                            socket.pushedEvents
+
+                        _ ->
+                            Dict.insert socket.ref push socket.pushedEvents
+
+                Nothing ->
+                    socket.pushedEvents
+    in
+    { socket | pushedEvents = pushedEvents, ref = socket.ref + 1 }
 
 
 addChannel : Channel msg -> Socket msg -> Socket msg
@@ -217,4 +235,4 @@ heartbeat socket =
         event =
             Event.init "heartbeat" "phoenix" (Encode.object []) (Just socket.ref)
     in
-    doPush event socket
+    doPush event Nothing socket

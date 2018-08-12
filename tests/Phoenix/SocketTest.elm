@@ -74,24 +74,12 @@ suite =
                                 |> Socket.init
                                 |> Socket.join channel
                     in
-                    Expect.equal (Dict.size socket.pushedEvents) 1
-            , test "Join event name should be phx_join" <|
-                \_ ->
-                    let
-                        channel =
-                            Channel.init "chat:room233"
+                    case Dict.get channel.topic socket.channels of
+                        Just ch ->
+                            Expect.equal (Channel.isOngoing ch) True
 
-                        ( socket, cmd ) =
-                            basicEndpoint
-                                |> Socket.init
-                                |> Socket.join channel
-                    in
-                    case Dict.get 1 socket.pushedEvents of
-                        Just event ->
-                            Expect.equal event.event "phx_join"
-
-                        Nothing ->
-                            Expect.fail "didn't find event"
+                        _ ->
+                            Expect.fail "not possible!"
             ]
         , describe "listen to socket"
             [ test "return subscription" <|
@@ -264,24 +252,11 @@ suite =
                                 |> Tuple.first
                                 |> Socket.update PhoenixMsg msg
                                 |> Tuple.first
-                                |> Socket.update PhoenixMsg msg
-                                |> Tuple.first
-
-                        errChannel =
-                            Channel.findChannel channel.topic socket.channels
-
-                        event =
-                            Dict.get 2 socket.pushedEvents
                     in
-                    case Dict.get 2 socket.pushedEvents of
-                        Just event ->
-                            Expect.equal event.event "heartbeat"
-
-                        _ ->
-                            Expect.fail "couldn't find second heartbeat"
+                    Expect.equal socket.heartbeatTimestamp 19292922
             ]
         , describe "pushs event"
-            [ test "push and event" <|
+            [ test "push an event" <|
                 \_ ->
                     let
                         channel =
@@ -292,8 +267,9 @@ suite =
                             Encode.object [ ( "name", Encode.string "foo" ) ]
 
                         push =
-                            Push.init "hello" channel
+                            Push.initWithChannel "hello" channel
                                 |> Push.withPayload payload
+                                |> Push.onOk OnOkCmd
 
                         socket =
                             basicEndpoint
@@ -318,8 +294,9 @@ suite =
                             Encode.object [ ( "name", Encode.string "foo" ) ]
 
                         push =
-                            Push.init "hello" channel
+                            Push.initWithChannel "hello" channel
                                 |> Push.withPayload payload
+                                |> Push.onOk OnOkCmd
 
                         socket =
                             basicEndpoint
@@ -345,6 +322,7 @@ type TestMsg
     | FailedToJoinedChannel Value
     | ChannelGotError Value
     | ChannelGotClosed Value
+    | OnOkCmd Value
 
 
 endPointFuzzer : Fuzzer String

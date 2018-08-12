@@ -1,12 +1,13 @@
 module Phoenix.Internal.Socket exposing (..)
 
-import Dict
+import Dict exposing (Dict)
 import Json.Encode as Encode
 import Phoenix.Channel as Channel exposing (Channel)
 import Phoenix.Event as Event exposing (Event)
 import Phoenix.Internal.Channel as ChannelHelper
 import Phoenix.Internal.Message as InternalMessage exposing (InternalMessage(..))
 import Phoenix.Message as Message exposing (Msg)
+import Phoenix.Push as Push exposing (Push)
 import Time
 import WebSocket as NativeWebSocket
 
@@ -52,18 +53,18 @@ mapInternalEvents channels event =
             Message.none
 
 
-mapMaybeExternalEvents : Dict.Dict String (Channel msg) -> Maybe Event -> Msg msg
-mapMaybeExternalEvents channels maybeEvent =
+mapMaybeExternalEvents : Dict Int (Push msg) -> Dict.Dict String (Channel msg) -> Maybe Event -> Msg msg
+mapMaybeExternalEvents pushedEvents channels maybeEvent =
     case maybeEvent of
         Just event ->
-            mapExternalEvents channels event
+            mapExternalEvents pushedEvents channels event
 
         Nothing ->
             Message.none
 
 
-mapExternalEvents : Dict.Dict String (Channel msg) -> Event -> Msg msg
-mapExternalEvents channels event =
+mapExternalEvents : Dict Int (Push msg) -> Dict.Dict String (Channel msg) -> Event -> Msg msg
+mapExternalEvents pushedEvents channels event =
     let
         channelWithRef =
             Channel.findChannelWithRef event.topic event.ref
@@ -83,7 +84,22 @@ mapExternalEvents channels event =
                             ChannelHelper.onFailedToJoinCommand response chan
 
                 Nothing ->
-                    Message.none
+                    case event.ref of
+                        Just ref ->
+                            case Dict.get ref pushedEvents of
+                                Just push ->
+                                    case Event.decodeReply event.payload of
+                                        Ok response ->
+                                            Push.onOkCommand response push
+
+                                        Err response ->
+                                            Push.onErrorCommand response push
+
+                                _ ->
+                                    Message.none
+
+                        _ ->
+                            Message.none
 
         "phx_error" ->
             channels

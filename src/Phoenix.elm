@@ -1,11 +1,11 @@
-module Phoenix exposing (initPushWithChannelName, join, listen, push, pushWithPayload, update)
+module Phoenix exposing (join, listen, push, update)
 
 {-|
 
 
 # Basic Usage
 
-@docs listen, update, join, push, initPushWithChannelName, pushWithPayload
+@docs listen, update, join, push
 
 -}
 
@@ -50,19 +50,3 @@ push toExternalAppMsgFn pushRecord socket =
             Socket.push pushRecord socket
     in
     ( updateSocket, Cmd.map toExternalAppMsgFn phxCmd )
-
-
-{-| pushWithPayload
--}
-pushWithPayload : (Msg msg -> msg) -> Push msg -> Encode.Value -> Socket msg -> ( Socket msg, Cmd msg )
-pushWithPayload toExternalAppMsgFn pushRecord payload socket =
-    push toExternalAppMsgFn (Push.withPayload payload pushRecord) socket
-
-
-{-| initPushWithChannelName
--}
-initPushWithChannelName : String -> String -> Socket msg -> Maybe (Push msg)
-initPushWithChannelName event channelName socket =
-    socket.channels
-        |> Channel.findChannel channelName
-        |> Maybe.andThen (\chan -> Just (Push.init event chan))
