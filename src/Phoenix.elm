@@ -1,11 +1,11 @@
-module Phoenix exposing (join, listen, push, update)
+module Phoenix exposing (join, listen, push, subscribe, update)
 
 {-|
 
 
 # Basic Usage
 
-@docs listen, update, join, push
+@docs listen, update, join, push, subscribe
 
 -}
 
@@ -39,6 +39,20 @@ join toExternalAppMsgFn channel socket =
             Socket.join channel socket
     in
     ( updateSocket, Cmd.map toExternalAppMsgFn phxCmd )
+
+
+{-| Subscribes to a channel
+
+It's different than join and only Subscribes to a channel events without triggering join on remote server
+
+-}
+subscribe : (Msg msg -> msg) -> Channel msg -> Socket msg -> ( Socket msg, Cmd msg )
+subscribe toExternalAppMsgFn channel socket =
+    let
+        ( updateSocket, phxCmd ) =
+            Socket.subscribe channel socket
+    in
+    ( updateSocket, Cmd.none )
 
 
 {-| Pushes a a message

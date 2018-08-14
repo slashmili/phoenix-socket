@@ -49,6 +49,18 @@ suite =
                                 |> Socket.join channel
                     in
                     Expect.equal (Dict.size socket.channels) 1
+            , test "subscribe should add an item to list of channels" <|
+                \_ ->
+                    let
+                        channel =
+                            Channel.init "chat:room233"
+
+                        ( socket, cmd ) =
+                            basicEndpoint
+                                |> Socket.init
+                                |> Socket.subscribe channel
+                    in
+                    Expect.equal (Dict.size socket.channels) 1
             , test "calling join again on a channel that is not joined yet should be ignored" <|
                 \_ ->
                     let

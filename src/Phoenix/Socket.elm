@@ -1,11 +1,11 @@
-module Phoenix.Socket exposing (Socket, init, join, listen, push, update, withLongPoll)
+module Phoenix.Socket exposing (Socket, init, join, listen, push, subscribe, update, withLongPoll)
 
 {-|
 
 
 # This module provides an interface for connecting to Phoenix Socket
 
-@docs Socket, init, update, join, listen, push, withLongPoll
+@docs Socket, init, update, join, listen, push, withLongPoll, subscribe
 
 -}
 
@@ -95,6 +95,14 @@ join channel socket =
 
         Nothing ->
             doJoin channel socket
+
+
+{-| Subscribes to a channel events
+Adds the channel to the socket model
+-}
+subscribe : Channel msg -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
+subscribe channel socket =
+    ( addChannel (Channel.setJoinedState channel) socket, Cmd.none )
 
 
 {-| Listens to socket
