@@ -1,11 +1,11 @@
-module Phoenix.Socket exposing (Socket, init, join, listen, push, subscribe, update, withLongPoll)
+module Phoenix.Socket exposing (Socket, channels, endPoint, heartbeatTimestamp, init, join, listen, push, pushedEvents, subscribe, update, withLongPoll)
 
 {-|
 
 
 # This module provides an interface for connecting to Phoenix Socket
 
-@docs Socket, init, update, join, listen, push, withLongPoll, subscribe
+@docs Socket, init, update, join, listen, push, withLongPoll, subscribe, endPoint, pushedEvents, channels, heartbeatTimestamp
 
 -}
 
@@ -34,67 +34,70 @@ type State
 
 {-| Socket model
 -}
-type alias Socket msg =
-    { endPoint : String
-    , channels : Dict String (Channel msg)
-    , serializer : Serializer
-    , transport : Transport
-    , pushedEvents : Dict Int (Push msg)
-    , heartbeatIntervalSeconds : Float
-    , heartbeatTimestamp : Float
-    , heartbeatReplyTimestamp : Float
-    , longPollToken : Maybe.Maybe String
-    , ref : Int
-    , readyState : State
-    , withDebug : Bool
-    , withoutHeartbeat : Bool
-    }
+type Socket msg
+    = Socket
+        { endPoint : String
+        , channels : Dict String (Channel msg)
+        , serializer : Serializer
+        , transport : Transport
+        , pushedEvents : Dict Int (Push msg)
+        , heartbeatIntervalSeconds : Float
+        , heartbeatTimestamp : Float
+        , heartbeatReplyTimestamp : Float
+        , longPollToken : Maybe.Maybe String
+        , ref : Int
+        , readyState : State
+        , withDebug : Bool
+        , withoutHeartbeat : Bool
+        }
 
 
 {-| Initializes Socket using the websocket address
 -}
 init : String -> Socket msg
 init endPoint =
-    { endPoint = endPoint
-    , channels = Dict.empty
-    , serializer = V1
-    , transport = WebSocket
-    , pushedEvents = Dict.empty
-    , heartbeatIntervalSeconds = 30
-    , heartbeatTimestamp = 0
-    , heartbeatReplyTimestamp = 0
-    , ref = 1
-    , longPollToken = Nothing
-    , readyState = Closed
-    , withDebug = False
-    , withoutHeartbeat = False
-    }
+    Socket
+        { endPoint = endPoint
+        , channels = Dict.empty
+        , serializer = V1
+        , transport = WebSocket
+        , pushedEvents = Dict.empty
+        , heartbeatIntervalSeconds = 30
+        , heartbeatTimestamp = 0
+        , heartbeatReplyTimestamp = 0
+        , ref = 1
+        , longPollToken = Nothing
+        , readyState = Closed
+        , withDebug = False
+        , withoutHeartbeat = False
+        }
 
 
 {-| withLongPoll
 -}
 withLongPoll : Socket msg -> Socket msg
-withLongPoll socket =
-    { socket
-        | transport = LongPoll
-    }
+withLongPoll (Socket socket) =
+    Socket
+        { socket
+            | transport = LongPoll
+        }
 
 
 {-| Joins a channel
 Adds the channel to the socket model and returns a command that sends data
 -}
 join : Channel msg -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
-join channel socket =
-    case Dict.get channel.topic socket.channels of
+join channel (Socket socket) =
+    case Dict.get (Channel.topic channel) socket.channels of
         Just channelItm ->
             if Channel.isOngoing channelItm then
-                ( socket, Cmd.none )
+                ( Socket socket, Cmd.none )
 
             else
-                doJoin channel socket
+                doJoin channel (Socket socket)
 
         Nothing ->
-            doJoin channel socket
+            doJoin channel (Socket socket)
 
 
 {-| Subscribes to a channel events
@@ -108,14 +111,14 @@ subscribe channel socket =
 {-| Listens to socket
 -}
 listen : (Msg msg -> msg) -> Socket msg -> Sub msg
-listen toExternalAppMsgFn socket =
+listen toExternalAppMsgFn (Socket socket) =
     InternalWebSocket.listen socket.endPoint socket.channels socket.pushedEvents socket.heartbeatIntervalSeconds toExternalAppMsgFn
 
 
 {-| Handles Phoenix Msg
 -}
 update : (Msg msg -> msg) -> Msg msg -> Socket msg -> ( Socket msg, Cmd msg )
-update toExternalAppMsgFn msg socket =
+update toExternalAppMsgFn msg (Socket socket) =
     case Message.extractInternalMsg msg of
         ChannelSuccessfullyJoined channel response ->
             let
@@ -123,7 +126,7 @@ update toExternalAppMsgFn msg socket =
                     Channel.setJoinedState channel
 
                 updateSocket =
-                    { socket | channels = Channel.updateChannel updatedChannel socket.channels }
+                    Socket { socket | channels = Channel.updateChannel updatedChannel socket.channels }
             in
             ( updateSocket, Cmd.none )
 
@@ -133,7 +136,7 @@ update toExternalAppMsgFn msg socket =
                     Channel.setErroredState channel
 
                 updateSocket =
-                    { socket | channels = Channel.updateChannel updatedChannel socket.channels }
+                    Socket { socket | channels = Channel.updateChannel updatedChannel socket.channels }
             in
             ( updateSocket, Cmd.none )
 
@@ -143,7 +146,7 @@ update toExternalAppMsgFn msg socket =
                     Channel.setErroredState channel
 
                 updateSocket =
-                    { socket | channels = Channel.updateChannel updatedChannel socket.channels }
+                    Socket { socket | channels = Channel.updateChannel updatedChannel socket.channels }
             in
             ( updateSocket, Cmd.none )
 
@@ -153,46 +156,46 @@ update toExternalAppMsgFn msg socket =
                     Channel.setClosedState channel
 
                 updateSocket =
-                    { socket | channels = Channel.updateChannel updatedChannel socket.channels }
+                    Socket { socket | channels = Channel.updateChannel updatedChannel socket.channels }
             in
             ( updateSocket, Cmd.none )
 
         Heartbeat heartbeatTimestamp ->
             let
                 ( updateSocket, cmd ) =
-                    heartbeat socket
+                    heartbeat (Socket { socket | heartbeatTimestamp = heartbeatTimestamp })
             in
-            ( { updateSocket | heartbeatTimestamp = heartbeatTimestamp }, Cmd.map toExternalAppMsgFn cmd )
+            ( updateSocket, Cmd.map toExternalAppMsgFn cmd )
 
         HeartbeatReply ->
-            ( { socket | heartbeatReplyTimestamp = socket.heartbeatTimestamp }, Cmd.none )
+            ( Socket { socket | heartbeatReplyTimestamp = socket.heartbeatTimestamp }, Cmd.none )
 
         _ ->
-            ( socket, Cmd.none )
+            ( Socket socket, Cmd.none )
 
 
 {-| pushs a message
 -}
 push : Push msg -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
-push pushRecord socket =
+push pushRecord (Socket socket) =
     let
         event =
             Event pushRecord.event pushRecord.topic pushRecord.payload (Just socket.ref)
     in
-    doPush event (Just pushRecord) socket
+    doPush event (Just pushRecord) (Socket socket)
 
 
 doPush : Event -> Maybe (Push msg) -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
-doPush event maybePush socket =
+doPush event maybePush (Socket socket) =
     let
-        updateSocket =
-            addPushedEvent maybePush socket
+        socketType =
+            addPushedEvent maybePush (Socket socket)
     in
-    ( updateSocket, InternalWebSocket.send socket.endPoint event )
+    ( socketType, InternalWebSocket.send socket.endPoint event )
 
 
 doJoin : Channel msg -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
-doJoin channel socket =
+doJoin channel (Socket socket) =
     let
         eventName =
             "phx_join"
@@ -201,10 +204,10 @@ doJoin channel socket =
             Channel.setJoiningState socket.ref channel
 
         event =
-            Event.init eventName channel.topic channel.payload (Just socket.ref)
+            Event.init eventName (Channel.topic channel) (Channel.payload channel) (Just socket.ref)
 
         updateSocket =
-            socket
+            Socket socket
                 |> addPushedEvent Nothing
                 |> addChannel updatedChannel
     in
@@ -214,7 +217,7 @@ doJoin channel socket =
 
 
 addPushedEvent : Maybe (Push msg) -> Socket msg -> Socket msg
-addPushedEvent maybePush socket =
+addPushedEvent maybePush (Socket socket) =
     let
         pushedEvents =
             case maybePush of
@@ -229,18 +232,42 @@ addPushedEvent maybePush socket =
                 Nothing ->
                     socket.pushedEvents
     in
-    { socket | pushedEvents = pushedEvents, ref = socket.ref + 1 }
+    Socket { socket | pushedEvents = pushedEvents, ref = socket.ref + 1 }
 
 
 addChannel : Channel msg -> Socket msg -> Socket msg
-addChannel channel socket =
-    { socket | channels = Channel.addChannel channel socket.channels }
+addChannel channel (Socket socket) =
+    Socket { socket | channels = Channel.addChannel channel socket.channels }
 
 
 heartbeat : Socket msg -> ( Socket msg, Cmd (Msg msg) )
-heartbeat socket =
+heartbeat (Socket socket) =
     let
         event =
             Event.init "heartbeat" "phoenix" (Encode.object []) (Just socket.ref)
     in
-    doPush event Nothing socket
+    doPush event Nothing (Socket socket)
+
+
+{-| -}
+endPoint : Socket msg -> String
+endPoint (Socket { endPoint }) =
+    endPoint
+
+
+{-| -}
+pushedEvents : Socket msg -> Dict Int (Push msg)
+pushedEvents (Socket { pushedEvents }) =
+    pushedEvents
+
+
+{-| -}
+channels : Socket msg -> Dict String (Channel msg)
+channels (Socket { channels }) =
+    channels
+
+
+{-| -}
+heartbeatTimestamp : Socket msg -> Float
+heartbeatTimestamp (Socket { heartbeatTimestamp }) =
+    heartbeatTimestamp
