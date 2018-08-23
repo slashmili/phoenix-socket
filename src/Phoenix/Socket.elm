@@ -1,4 +1,4 @@
-module Phoenix.Socket exposing (Socket, channels, endPoint, heartbeatTimestamp, init, join, listen, push, pushedEvents, subscribe, update, withLongPoll)
+module Phoenix.Socket exposing (Socket, init, update, join, listen, push, withLongPoll, subscribe, endPoint, pushedEvents, channels, heartbeatTimestamp)
 
 {-|
 

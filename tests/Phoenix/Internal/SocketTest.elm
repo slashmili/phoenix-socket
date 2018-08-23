@@ -1,4 +1,4 @@
-module Phoenix.Internal.SocketTest exposing (..)
+module Phoenix.Internal.SocketTest exposing (TestMsg(..), suite)
 
 import Dict
 import Expect exposing (Expectation)

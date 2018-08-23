@@ -1,4 +1,4 @@
-module Phoenix.ChannelTest exposing (..)
+module Phoenix.ChannelTest exposing (TestMsg(..), suite)
 
 import Dict
 import Expect exposing (Expectation)

@@ -1,4 +1,4 @@
-module Phoenix.Internal.LongPoll exposing (..)
+module Phoenix.Internal.LongPoll exposing (LongPollResponse, externalMsgs, poll, send)
 
 import Dict exposing (Dict)
 import Http

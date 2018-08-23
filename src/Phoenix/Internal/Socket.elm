@@ -1,4 +1,4 @@
-module Phoenix.Internal.Socket exposing (..)
+module Phoenix.Internal.Socket exposing (handleInternalPhxReply, heartbeatSubscription, mapExternalEvents, mapInternalEvents, mapMaybeExternalEvents, mapMaybeInternalEvents)
 
 import Dict exposing (Dict)
 import Json.Encode as Encode

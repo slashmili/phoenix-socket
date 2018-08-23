@@ -1,4 +1,4 @@
-module Phoenix.Internal.LongPollEvent exposing (..)
+module Phoenix.Internal.LongPollEvent exposing (LongPollEvent, longPolldecoder)
 
 import Json.Decode as Decode exposing (Decoder, field, int, list, map3, maybe, string)
 import Phoenix.Event as Event exposing (Event)

@@ -1,4 +1,4 @@
-module Phoenix.Message exposing (Msg, extractExternalMsg, extractInternalMsg, mapAll, none, toExternalMsg, toInternalMsg)
+module Phoenix.Message exposing (Msg, mapAll, none, toInternalMsg, toExternalMsg, extractInternalMsg, extractExternalMsg)
 
 {-|
 

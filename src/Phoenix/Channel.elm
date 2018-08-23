@@ -1,31 +1,4 @@
-module Phoenix.Channel
-    exposing
-        ( Channel
-        , addChannel
-        , findChannel
-        , findChannelWithRef
-        , init
-        , isClosed
-        , isErrored
-        , isJoined
-        , isOngoing
-        , joinRef
-        , on
-        , onClose
-        , onError
-        , onJoin
-        , onJoinError
-        , ons
-        , payload
-        , receives
-        , setClosedState
-        , setErroredState
-        , setJoinedState
-        , setJoiningState
-        , topic
-        , updateChannel
-        , updateChannelDict
-        )
+module Phoenix.Channel exposing (Channel, init, setJoiningState, setClosedState, setJoinedState, setErroredState, isOngoing, isClosed, isJoined, isErrored, addChannel, updateChannel, updateChannelDict, findChannelWithRef, findChannel, on, onJoin, onJoinError, onError, onClose, topic, joinRef, receives, ons, payload)
 
 {-|
 

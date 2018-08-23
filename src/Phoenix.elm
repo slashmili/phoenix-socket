@@ -1,4 +1,4 @@
-module Phoenix exposing (join, listen, push, subscribe, update)
+module Phoenix exposing (listen, update, join, push, subscribe)
 
 {-|
 
