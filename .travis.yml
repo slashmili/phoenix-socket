@@ -24,5 +24,5 @@ install:
 
 script:
   - elm-format --validate src tests
-  - elm-make --output=/dev/null --yes
+  - elm make --output=/dev/null --yes
   - $TRAVIS_BUILD_DIR/sysconfcpus/bin/sysconfcpus -n 2 elm-test
