@@ -11,6 +11,7 @@ import Phoenix.Message as Message
 import Phoenix.Push as Push
 import Phoenix.Socket as Socket
 import Test exposing (..)
+import Time
 
 
 basicEndpoint =
@@ -255,7 +256,7 @@ suite =
                             Encode.object []
 
                         msg =
-                            Message.toInternalMsg (Heartbeat 19292922)
+                            Message.toInternalMsg (Heartbeat (Time.millisToPosix 19292922))
 
                         socket =
                             basicEndpoint
@@ -265,7 +266,7 @@ suite =
                                 |> Socket.update PhoenixMsg msg
                                 |> Tuple.first
                     in
-                    Expect.equal (Socket.heartbeatTimestamp socket) 19292922
+                    Expect.equal (Socket.heartbeatTimestamp socket) (Time.millisToPosix 19292922)
             ]
         , describe "pushs event"
             [ test "push an event" <|
