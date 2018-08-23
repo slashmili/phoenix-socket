@@ -13,11 +13,17 @@ import Dict exposing (Dict)
 import Json.Encode as Encode
 import Phoenix.Channel as Channel exposing (Channel)
 import Phoenix.Event as Event exposing (Event)
+import Phoenix.Internal.LongPoll as LongPoll
 import Phoenix.Internal.Message as InternalMessage exposing (InternalMessage(..))
-import Phoenix.Internal.WebSocket as InternalWebSocket
 import Phoenix.Message as Message exposing (Msg)
 import Phoenix.Push as Push exposing (Push)
 import Phoenix.Serializer exposing (Serializer(..))
+import Regex
+import Time
+
+
+second =
+    1000
 
 
 type Transport
@@ -42,8 +48,8 @@ type Socket msg
         , transport : Transport
         , pushedEvents : Dict Int (Push msg)
         , heartbeatIntervalSeconds : Float
-        , heartbeatTimestamp : Float
-        , heartbeatReplyTimestamp : Float
+        , heartbeatTimestamp : Time.Posix
+        , heartbeatReplyTimestamp : Time.Posix
         , longPollToken : Maybe.Maybe String
         , ref : Int
         , readyState : State
@@ -55,16 +61,16 @@ type Socket msg
 {-| Initializes Socket using the websocket address
 -}
 init : String -> Socket msg
-init endPoint =
+init endPointStr =
     Socket
-        { endPoint = endPoint
+        { endPoint = websocketEndPointToLongPollEndPoint endPointStr
         , channels = Dict.empty
         , serializer = V1
-        , transport = WebSocket
+        , transport = LongPoll
         , pushedEvents = Dict.empty
         , heartbeatIntervalSeconds = 30
-        , heartbeatTimestamp = 0
-        , heartbeatReplyTimestamp = 0
+        , heartbeatTimestamp = Time.millisToPosix 0
+        , heartbeatReplyTimestamp = Time.millisToPosix 0
         , ref = 1
         , longPollToken = Nothing
         , readyState = Closed
@@ -80,6 +86,7 @@ withLongPoll (Socket socket) =
     Socket
         { socket
             | transport = LongPoll
+            , endPoint = websocketEndPointToLongPollEndPoint socket.endPoint
         }
 
 
@@ -112,7 +119,21 @@ subscribe channel socket =
 -}
 listen : (Msg msg -> msg) -> Socket msg -> Sub msg
 listen toExternalAppMsgFn (Socket socket) =
-    InternalWebSocket.listen socket.endPoint socket.channels socket.pushedEvents socket.heartbeatIntervalSeconds toExternalAppMsgFn
+    let
+        freq =
+            case socket.readyState of
+                Closed ->
+                    second
+
+                Open ->
+                    5 * second
+
+                _ ->
+                    10 * second
+    in
+    Time.every freq LongPollTick
+        |> Sub.map Message.toInternalMsg
+        |> Sub.map toExternalAppMsgFn
 
 
 {-| Handles Phoenix Msg
@@ -160,17 +181,72 @@ update toExternalAppMsgFn msg (Socket socket) =
             in
             ( updateSocket, Cmd.none )
 
-        Heartbeat heartbeatTimestamp ->
+        Heartbeat heartbeatTimestampVal ->
             let
                 ( updateSocket, cmd ) =
-                    heartbeat (Socket { socket | heartbeatTimestamp = heartbeatTimestamp })
+                    heartbeat (Socket { socket | heartbeatTimestamp = heartbeatTimestampVal })
             in
             ( updateSocket, Cmd.map toExternalAppMsgFn cmd )
 
         HeartbeatReply ->
             ( Socket { socket | heartbeatReplyTimestamp = socket.heartbeatTimestamp }, Cmd.none )
 
-        _ ->
+        LongPollTick _ ->
+            case socket.readyState of
+                Open ->
+                    ( Socket { socket | readyState = Connecting }, Cmd.map toExternalAppMsgFn (LongPoll.poll socket.endPoint socket.longPollToken) )
+
+                Connecting ->
+                    ( Socket socket, Cmd.none )
+
+                Closing ->
+                    ( Socket socket, Cmd.none )
+
+                Closed ->
+                    ( Socket { socket | readyState = Connecting }, Cmd.map toExternalAppMsgFn (LongPoll.poll socket.endPoint socket.longPollToken) )
+
+        LongPollPolled (Ok longPollEvent) ->
+            case longPollEvent.status of
+                200 ->
+                    let
+                        command =
+                            case longPollEvent.messages of
+                                Just [] ->
+                                    Cmd.none
+
+                                Nothing ->
+                                    Cmd.none
+
+                                Just messsages ->
+                                    LongPoll.externalMsgs socket.pushedEvents socket.channels toExternalAppMsgFn messsages
+                    in
+                    ( Socket { socket | readyState = Closed }, command )
+
+                401 ->
+                    -- TODO: send onJoinError Msg
+                    ( Socket socket, Cmd.none )
+
+                410 ->
+                    -- connecten is opened
+                    ( Socket { socket | readyState = Open, longPollToken = longPollEvent.token }, Cmd.none )
+
+                204 ->
+                    -- no content
+                    ( Socket { socket | readyState = Open }, Cmd.none )
+
+                _ ->
+                    ( Socket { socket | readyState = Closed }, Cmd.none )
+
+        LongPollPolled (Err _) ->
+            ( Socket { socket | readyState = Closed }, Cmd.none )
+
+        LongPollSent (Err _) ->
+            ( Socket socket, Cmd.none )
+
+        LongPollSent (Ok _) ->
+            ( Socket socket, Cmd.none )
+
+        NoOp ->
             ( Socket socket, Cmd.none )
 
 
@@ -191,7 +267,7 @@ doPush event maybePush (Socket socket) =
         socketType =
             addPushedEvent maybePush (Socket socket)
     in
-    ( socketType, InternalWebSocket.send socket.endPoint event )
+    ( socketType, LongPoll.send socket.endPoint socket.longPollToken event )
 
 
 doJoin : Channel msg -> Socket msg -> ( Socket msg, Cmd (Msg msg) )
@@ -211,28 +287,26 @@ doJoin channel (Socket socket) =
                 |> addPushedEvent Nothing
                 |> addChannel updatedChannel
     in
-    -- LongPoll ->
-    --        (updateSocket, LongPoll.send socket.endPoint socket.longPollToken event)
-    ( updateSocket, InternalWebSocket.send socket.endPoint event )
+    ( updateSocket, LongPoll.send socket.endPoint socket.longPollToken event )
 
 
 addPushedEvent : Maybe (Push msg) -> Socket msg -> Socket msg
 addPushedEvent maybePush (Socket socket) =
     let
-        pushedEvents =
+        pushedEventsVal =
             case maybePush of
-                Just push ->
-                    case Dict.size push.on of
+                Just pushVal ->
+                    case Dict.size pushVal.on of
                         0 ->
                             socket.pushedEvents
 
                         _ ->
-                            Dict.insert socket.ref push socket.pushedEvents
+                            Dict.insert socket.ref pushVal socket.pushedEvents
 
                 Nothing ->
                     socket.pushedEvents
     in
-    Socket { socket | pushedEvents = pushedEvents, ref = socket.ref + 1 }
+    Socket { socket | pushedEvents = pushedEventsVal, ref = socket.ref + 1 }
 
 
 addChannel : Channel msg -> Socket msg -> Socket msg
@@ -251,23 +325,49 @@ heartbeat (Socket socket) =
 
 {-| -}
 endPoint : Socket msg -> String
-endPoint (Socket { endPoint }) =
-    endPoint
+endPoint socketType =
+    case socketType of
+        Socket socket ->
+            socket.endPoint
 
 
 {-| -}
 pushedEvents : Socket msg -> Dict Int (Push msg)
-pushedEvents (Socket { pushedEvents }) =
-    pushedEvents
+pushedEvents socketType =
+    case socketType of
+        Socket socket ->
+            socket.pushedEvents
 
 
 {-| -}
 channels : Socket msg -> Dict String (Channel msg)
-channels (Socket { channels }) =
-    channels
+channels socketType =
+    case socketType of
+        Socket socket ->
+            socket.channels
 
 
 {-| -}
-heartbeatTimestamp : Socket msg -> Float
-heartbeatTimestamp (Socket { heartbeatTimestamp }) =
-    heartbeatTimestamp
+heartbeatTimestamp : Socket msg -> Time.Posix
+heartbeatTimestamp socketType =
+    case socketType of
+        Socket socket ->
+            socket.heartbeatTimestamp
+
+
+websocketEndPointToLongPollEndPoint : String -> String
+websocketEndPointToLongPollEndPoint endPointVal =
+    let
+        websocketRouteRegex =
+            Maybe.withDefault Regex.never <| Regex.fromString "/websocket$"
+
+        wsRegex =
+            Maybe.withDefault Regex.never <| Regex.fromString "^ws://"
+
+        wssRegex =
+            Maybe.withDefault Regex.never <| Regex.fromString "^wss://"
+    in
+    endPointVal
+        |> Regex.replace websocketRouteRegex (\_ -> "/longpoll")
+        |> Regex.replace wsRegex (\_ -> "http://")
+        |> Regex.replace wssRegex (\_ -> "https://")
