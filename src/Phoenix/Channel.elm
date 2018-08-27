@@ -9,15 +9,20 @@ module Phoenix.Channel
         , isErrored
         , isJoined
         , isOngoing
+        , joinRef
         , on
         , onClose
         , onError
         , onJoin
         , onJoinError
+        , ons
+        , payload
+        , receives
         , setClosedState
         , setErroredState
         , setJoinedState
         , setJoiningState
+        , topic
         , updateChannel
         , updateChannelDict
         )
@@ -27,7 +32,7 @@ module Phoenix.Channel
 
 # This module is keeping states related to channel
 
-@docs Channel, init, setJoiningState, setClosedState, setJoinedState, setErroredState, isOngoing, isClosed, isJoined, isErrored, addChannel, updateChannel, updateChannelDict, findChannelWithRef, findChannel, on, onJoin, onJoinError, onError, onClose
+@docs Channel, init, setJoiningState, setClosedState, setJoinedState, setErroredState, isOngoing, isClosed, isJoined, isErrored, addChannel, updateChannel, updateChannelDict, findChannelWithRef, findChannel, on, onJoin, onJoinError, onError, onClose, topic, joinRef, receives, ons, payload
 
 -}
 
@@ -47,61 +52,63 @@ type State
 
 {-| Channel Model
 -}
-type alias Channel msg =
-    { topic : String
-    , on : Dict String (Value -> msg)
-    , state : State
-    , joinRef : Maybe Int
-    , receive : Dict String (Value -> msg)
-    , payload : Encode.Value
-    }
+type Channel msg
+    = Channel
+        { topic : String
+        , on : Dict String (Value -> msg)
+        , state : State
+        , joinRef : Maybe Int
+        , receive : Dict String (Value -> msg)
+        , payload : Encode.Value
+        }
 
 
 {-| Init channel model using channel topic
 -}
 init : String -> Channel msg
 init topic =
-    { topic = topic
-    , on = Dict.empty
-    , state = Init
-    , joinRef = Nothing
-    , receive = Dict.empty
-    , payload = Encode.object []
-    }
+    Channel
+        { topic = topic
+        , on = Dict.empty
+        , state = Init
+        , joinRef = Nothing
+        , receive = Dict.empty
+        , payload = Encode.object []
+        }
 
 
 {-| Sets the joining reference and state to Joining
 -}
 setJoiningState : Int -> Channel msg -> Channel msg
-setJoiningState ref channel =
-    { channel | state = Joining, joinRef = Just ref }
+setJoiningState ref (Channel channel) =
+    Channel { channel | state = Joining, joinRef = Just ref }
 
 
 {-| Sets stats to joined state
 -}
 setJoinedState : Channel msg -> Channel msg
-setJoinedState channel =
-    { channel | state = Joined, joinRef = Nothing }
+setJoinedState (Channel channel) =
+    Channel { channel | state = Joined, joinRef = Nothing }
 
 
 {-| Sets stats to Errored
 -}
 setErroredState : Channel msg -> Channel msg
-setErroredState channel =
-    { channel | state = Errored, joinRef = Nothing }
+setErroredState (Channel channel) =
+    Channel { channel | state = Errored, joinRef = Nothing }
 
 
 {-| Sets stats to Closed
 -}
 setClosedState : Channel msg -> Channel msg
-setClosedState channel =
-    { channel | state = Closed, joinRef = Nothing }
+setClosedState (Channel channel) =
+    Channel { channel | state = Closed, joinRef = Nothing }
 
 
 {-| Returns true if state is Joined Joining
 -}
 isOngoing : Channel msg -> Bool
-isOngoing channel =
+isOngoing (Channel channel) =
     if channel.state == Joining || channel.state == Joined then
         True
 
@@ -112,7 +119,7 @@ isOngoing channel =
 {-| Is this channel joined successfully ?
 -}
 isJoined : Channel msg -> Bool
-isJoined channel =
+isJoined (Channel channel) =
     case channel.state of
         Joined ->
             True
@@ -124,7 +131,7 @@ isJoined channel =
 {-| Is this channel closed ?
 -}
 isClosed : Channel msg -> Bool
-isClosed channel =
+isClosed (Channel channel) =
     case channel.state of
         Closed ->
             True
@@ -136,7 +143,7 @@ isClosed channel =
 {-| Is this channel faild to join
 -}
 isErrored : Channel msg -> Bool
-isErrored channel =
+isErrored (Channel channel) =
     case channel.state of
         Errored ->
             True
@@ -148,8 +155,8 @@ isErrored channel =
 {-| Adds a channel to Dict of channels
 -}
 addChannel : Channel msg -> Dict String (Channel msg) -> Dict String (Channel msg)
-addChannel channel channelDict =
-    Dict.insert channel.topic channel channelDict
+addChannel (Channel channel) channelDict =
+    Dict.insert channel.topic (Channel channel) channelDict
 
 
 {-| Finds a channel with its topic and joinRef number
@@ -157,9 +164,9 @@ addChannel channel channelDict =
 findChannelWithRef : String -> Maybe Int -> Dict String (Channel msg) -> Maybe (Channel msg)
 findChannelWithRef topic joinRef channels =
     case Dict.get topic channels of
-        Just channel ->
+        Just (Channel channel) ->
             if channel.joinRef == joinRef then
-                Just channel
+                Just (Channel channel)
 
             else
                 Nothing
@@ -178,8 +185,8 @@ findChannel topic channels =
 {-| Updates channel in the given Dict
 -}
 updateChannel : Channel msg -> Dict String (Channel msg) -> Dict String (Channel msg)
-updateChannel channel channels =
-    Dict.insert channel.topic channel channels
+updateChannel (Channel channel) channels =
+    Dict.insert channel.topic (Channel channel) channels
 
 
 {-| Triggers this message to send when joined a channel
@@ -219,16 +226,46 @@ onClose valueToMsg channel =
 {-| Triggers this message when event is received
 -}
 on : String -> (Value -> msg) -> Channel msg -> Channel msg
-on event cb channel =
-    { channel | on = Dict.insert event cb channel.on }
+on event cb (Channel channel) =
+    Channel { channel | on = Dict.insert event cb channel.on }
 
 
 receive : String -> (Value -> msg) -> Channel msg -> Channel msg
-receive event valueToMsg channel =
-    { channel | receive = Dict.insert event valueToMsg channel.receive }
+receive event valueToMsg (Channel channel) =
+    Channel { channel | receive = Dict.insert event valueToMsg channel.receive }
 
 
 {-| -}
 updateChannelDict : Channel msg -> Dict String (Channel msg) -> Dict String (Channel msg)
 updateChannelDict channel channels =
     updateChannel channel channels
+
+
+{-| -}
+topic : Channel msg -> String
+topic (Channel channel) =
+    channel.topic
+
+
+{-| -}
+joinRef : Channel msg -> Maybe Int
+joinRef (Channel channel) =
+    channel.joinRef
+
+
+{-| -}
+receives : Channel msg -> Dict String (Value -> msg)
+receives (Channel channel) =
+    channel.receive
+
+
+{-| -}
+ons : Channel msg -> Dict String (Value -> msg)
+ons (Channel channel) =
+    channel.on
+
+
+{-| -}
+payload : Channel msg -> Encode.Value
+payload (Channel channel) =
+    channel.payload

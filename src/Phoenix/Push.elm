@@ -12,7 +12,7 @@ module Phoenix.Push exposing (Push, init, initWithChannel, onError, onErrorComma
 import Dict exposing (Dict)
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Phoenix.Channel exposing (Channel)
+import Phoenix.Channel as Channel exposing (Channel)
 import Phoenix.Message as Message exposing (Msg)
 
 
@@ -37,7 +37,7 @@ init event topic =
 -}
 initWithChannel : String -> Channel msg -> Push msg
 initWithChannel event channel =
-    { event = event, topic = channel.topic, payload = Encode.object [], on = Dict.empty }
+    { event = event, topic = Channel.topic channel, payload = Encode.object [], on = Dict.empty }
 
 
 {-| Adds payload to Push

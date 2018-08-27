@@ -10,7 +10,7 @@ import Task
 
 onReceiveMsg : String -> Decode.Value -> Channel msg -> Msg msg
 onReceiveMsg name response channel =
-    case Dict.get name channel.receive of
+    case Dict.get name (Channel.receives channel) of
         Just cmd ->
             Message.toExternalMsg (cmd response)
 
@@ -40,7 +40,7 @@ onErrorCommand response channel =
 
 onCustomCommand : String -> Decode.Value -> Channel msg -> Msg msg
 onCustomCommand eventName response channel =
-    case Dict.get eventName channel.on of
+    case Dict.get eventName (Channel.ons channel) of
         Just cmd ->
             Message.toExternalMsg (cmd response)
 

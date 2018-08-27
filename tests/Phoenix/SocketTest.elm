@@ -27,7 +27,7 @@ suite =
                         socket =
                             Socket.init endPoint
                     in
-                    Expect.equal socket.endPoint endPoint
+                    Expect.equal (Socket.endPoint socket) endPoint
             ]
         , describe "initialise socket with channel"
             [ test "default init should return empty channel list" <|
@@ -36,7 +36,7 @@ suite =
                         socket =
                             Socket.init basicEndpoint
                     in
-                    Expect.equal (Dict.size socket.channels) 0
+                    Expect.equal (Dict.size (Socket.channels socket)) 0
             , test "join should add an item to list of channels" <|
                 \_ ->
                     let
@@ -48,7 +48,7 @@ suite =
                                 |> Socket.init
                                 |> Socket.join channel
                     in
-                    Expect.equal (Dict.size socket.channels) 1
+                    Expect.equal (Dict.size (Socket.channels socket)) 1
             , test "subscribe should add an item to list of channels" <|
                 \_ ->
                     let
@@ -60,7 +60,7 @@ suite =
                                 |> Socket.init
                                 |> Socket.subscribe channel
                     in
-                    Expect.equal (Dict.size socket.channels) 1
+                    Expect.equal (Dict.size (Socket.channels socket)) 1
             , test "calling join again on a channel that is not joined yet should be ignored" <|
                 \_ ->
                     let
@@ -74,7 +74,7 @@ suite =
                                 |> Tuple.first
                                 |> Socket.join channel
                     in
-                    Expect.equal (Dict.size socket.channels) 1
+                    Expect.equal (Dict.size (Socket.channels socket)) 1
             , test "join should add an item to list of pushedEvents" <|
                 \_ ->
                     let
@@ -86,7 +86,7 @@ suite =
                                 |> Socket.init
                                 |> Socket.join channel
                     in
-                    case Dict.get channel.topic socket.channels of
+                    case Dict.get (Channel.topic channel) (Socket.channels socket) of
                         Just ch ->
                             Expect.equal (Channel.isOngoing ch) True
 
@@ -143,7 +143,7 @@ suite =
                             Socket.update PhoenixMsg msg socket
 
                         joinedChannel =
-                            Channel.findChannel channel.topic updatedSocket.channels
+                            Channel.findChannel (Channel.topic channel) (Socket.channels updatedSocket)
                     in
                     case joinedChannel of
                         Just jc ->
@@ -174,7 +174,7 @@ suite =
                             Socket.update PhoenixMsg msg socket
 
                         errChannel =
-                            Channel.findChannel channel.topic updatedSocket.channels
+                            Channel.findChannel (Channel.topic channel) (Socket.channels updatedSocket)
                     in
                     case errChannel of
                         Just ec ->
@@ -205,7 +205,7 @@ suite =
                             Socket.update PhoenixMsg msg socket
 
                         errChannel =
-                            Channel.findChannel channel.topic updatedSocket.channels
+                            Channel.findChannel (Channel.topic channel) (Socket.channels updatedSocket)
                     in
                     case errChannel of
                         Just ec ->
@@ -236,7 +236,7 @@ suite =
                             Socket.update PhoenixMsg msg socket
 
                         errChannel =
-                            Channel.findChannel channel.topic updatedSocket.channels
+                            Channel.findChannel (Channel.topic channel) (Socket.channels updatedSocket)
                     in
                     case errChannel of
                         Just ec ->
@@ -265,7 +265,7 @@ suite =
                                 |> Socket.update PhoenixMsg msg
                                 |> Tuple.first
                     in
-                    Expect.equal socket.heartbeatTimestamp 19292922
+                    Expect.equal (Socket.heartbeatTimestamp socket) 19292922
             ]
         , describe "pushs event"
             [ test "push an event" <|
@@ -289,7 +289,7 @@ suite =
                                 |> Socket.push push
                                 |> Tuple.first
                     in
-                    case Dict.get 1 socket.pushedEvents of
+                    case Dict.get 1 (Socket.pushedEvents socket) of
                         Just event ->
                             Expect.equal event.payload payload
 
@@ -318,7 +318,7 @@ suite =
                                 |> Socket.push push
                                 |> Tuple.first
                     in
-                    case Dict.get 2 socket.pushedEvents of
+                    case Dict.get 2 (Socket.pushedEvents socket) of
                         Just event ->
                             Expect.equal event.payload payload
 
