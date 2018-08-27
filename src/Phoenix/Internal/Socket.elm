@@ -1,4 +1,4 @@
-module Phoenix.Internal.Socket exposing (..)
+module Phoenix.Internal.Socket exposing (handleInternalPhxReply, heartbeatSubscription, mapExternalEvents, mapInternalEvents, mapMaybeExternalEvents, mapMaybeInternalEvents)
 
 import Dict exposing (Dict)
 import Json.Encode as Encode
@@ -9,7 +9,6 @@ import Phoenix.Internal.Message as InternalMessage exposing (InternalMessage(..)
 import Phoenix.Message as Message exposing (Msg)
 import Phoenix.Push as Push exposing (Push)
 import Time
-import WebSocket as NativeWebSocket
 
 
 mapMaybeInternalEvents : Dict.Dict String (Channel msg) -> Maybe Event -> Msg msg
@@ -138,5 +137,5 @@ handleInternalPhxReply channels event =
 heartbeatSubscription : Float -> Sub (Msg msg)
 heartbeatSubscription heartbeatIntervalSeconds =
     Heartbeat
-        |> Time.every (Time.second * heartbeatIntervalSeconds)
+        |> Time.every (1000 * heartbeatIntervalSeconds)
         |> Sub.map Message.toInternalMsg

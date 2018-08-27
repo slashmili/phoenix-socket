@@ -1,4 +1,4 @@
-module Phoenix.Message exposing (Msg, extractExternalMsg, extractInternalMsg, mapAll, none, toExternalMsg, toInternalMsg)
+module Phoenix.Message exposing (Msg, mapAll, none, toInternalMsg, toExternalMsg, extractInternalMsg, extractExternalMsg)
 
 {-|
 
@@ -14,7 +14,6 @@ import Json.Decode as Decode
 import Phoenix.Channel exposing (Channel)
 import Phoenix.Event exposing (Event)
 import Phoenix.Internal.Message as InternalMessage exposing (InternalMessage(..))
-import Time exposing (Time)
 
 
 {-| This Msg should be used in user's main app

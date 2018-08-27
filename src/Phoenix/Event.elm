@@ -69,7 +69,7 @@ decodeReply payload =
             Err response
 
         Err errMsg ->
-            Err (Encode.object [ ( "reason", Encode.string errMsg ) ])
+            Err (Encode.object [ ( "reason", Encode.string "failed to parse response" ) ])
 
 
 statusToResult : String -> Decode.Value -> Result Decode.Value Decode.Value

@@ -1,31 +1,4 @@
-module Phoenix.Channel
-    exposing
-        ( Channel
-        , addChannel
-        , findChannel
-        , findChannelWithRef
-        , init
-        , isClosed
-        , isErrored
-        , isJoined
-        , isOngoing
-        , joinRef
-        , on
-        , onClose
-        , onError
-        , onJoin
-        , onJoinError
-        , ons
-        , payload
-        , receives
-        , setClosedState
-        , setErroredState
-        , setJoinedState
-        , setJoiningState
-        , topic
-        , updateChannel
-        , updateChannelDict
-        )
+module Phoenix.Channel exposing (Channel, init, setJoiningState, setClosedState, setJoinedState, setErroredState, isOngoing, isClosed, isJoined, isErrored, addChannel, updateChannel, updateChannelDict, findChannelWithRef, findChannel, on, onJoin, onJoinError, onError, onClose, topic, joinRef, receives, ons, payload)
 
 {-|
 
@@ -66,9 +39,9 @@ type Channel msg
 {-| Init channel model using channel topic
 -}
 init : String -> Channel msg
-init topic =
+init channelTopic =
     Channel
-        { topic = topic
+        { topic = channelTopic
         , on = Dict.empty
         , state = Init
         , joinRef = Nothing
@@ -162,10 +135,10 @@ addChannel (Channel channel) channelDict =
 {-| Finds a channel with its topic and joinRef number
 -}
 findChannelWithRef : String -> Maybe Int -> Dict String (Channel msg) -> Maybe (Channel msg)
-findChannelWithRef topic joinRef channels =
-    case Dict.get topic channels of
+findChannelWithRef channelTopic channelJoinRef channels =
+    case Dict.get channelTopic channels of
         Just (Channel channel) ->
-            if channel.joinRef == joinRef then
+            if channel.joinRef == channelJoinRef then
                 Just (Channel channel)
 
             else
@@ -178,8 +151,8 @@ findChannelWithRef topic joinRef channels =
 {-| Finds a channel in Dict of channels by its topic
 -}
 findChannel : String -> Dict String (Channel msg) -> Maybe (Channel msg)
-findChannel topic channels =
-    Dict.get topic channels
+findChannel channelTopic channels =
+    Dict.get channelTopic channels
 
 
 {-| Updates channel in the given Dict

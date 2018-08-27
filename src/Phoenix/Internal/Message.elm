@@ -4,7 +4,8 @@ import Http
 import Json.Decode as Decode
 import Phoenix.Channel exposing (Channel)
 import Phoenix.Event exposing (Event)
-import Time exposing (Time)
+import Phoenix.Internal.LongPollEvent exposing (LongPollEvent)
+import Time
 
 
 type InternalMessage msg
@@ -14,7 +15,10 @@ type InternalMessage msg
     | ChannelClosed (Channel msg) Decode.Value
     | ChannelError (Channel msg) Decode.Value
     | HeartbeatReply
-    | Heartbeat Time
+    | LongPollTick Time.Posix
+    | LongPollSent (Result Http.Error LongPollEvent)
+    | LongPollPolled (Result Http.Error LongPollEvent)
+    | Heartbeat Time.Posix
 
 
 channelSuccessfullyJoined : Channel msg -> Decode.Value -> InternalMessage msg
