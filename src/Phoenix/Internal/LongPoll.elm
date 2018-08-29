@@ -37,18 +37,27 @@ send endPoint maybeToken event =
         |> Cmd.map Message.toInternalMsg
 
 
-poll : String -> Maybe String -> Cmd (Msg msg)
-poll endPoint maybeToken =
+poll : String -> List ( String, String ) -> Maybe String -> Cmd (Msg msg)
+poll endPoint payload maybeToken =
     let
-        qparam =
+        qparams =
             case maybeToken of
-                Just token ->
-                    "?token=" ++ token
+                Nothing ->
+                    payload
+                        |> List.map (\( key, value ) -> key ++ "=" ++ value)
+                        |> String.join "&"
 
-                _ ->
-                    ""
+                Just connectionToken ->
+                    "token=" ++ connectionToken
+
+        fullQueryParams =
+            if String.length qparams == 0 then
+                ""
+
+            else
+                "?" ++ qparams
     in
-    Http.get (endPoint ++ qparam) longPolldecoder
+    Http.get (endPoint ++ fullQueryParams) longPolldecoder
         |> Http.send LongPollPolled
         |> Cmd.map Message.toInternalMsg
 

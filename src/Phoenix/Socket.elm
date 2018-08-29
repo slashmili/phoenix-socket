@@ -1,11 +1,11 @@
-module Phoenix.Socket exposing (Socket, init, update, join, listen, push, withLongPoll, subscribe, endPoint, pushedEvents, channels, heartbeatTimestamp)
+module Phoenix.Socket exposing (Socket, init, update, join, listen, push, withLongPoll, subscribe, endPoint, pushedEvents, channels, heartbeatTimestamp, withPayload)
 
 {-|
 
 
 # This module provides an interface for connecting to Phoenix Socket
 
-@docs Socket, init, update, join, listen, push, withLongPoll, subscribe, endPoint, pushedEvents, channels, heartbeatTimestamp
+@docs Socket, init, update, join, listen, push, withLongPoll, subscribe, endPoint, pushedEvents, channels, heartbeatTimestamp, withPayload
 
 -}
 
@@ -50,11 +50,12 @@ type Socket msg
         , heartbeatIntervalSeconds : Float
         , heartbeatTimestamp : Time.Posix
         , heartbeatReplyTimestamp : Time.Posix
-        , longPollToken : Maybe.Maybe String
+        , longPollToken : Maybe String
         , ref : Int
         , readyState : State
         , withDebug : Bool
         , withoutHeartbeat : Bool
+        , payload : List ( String, String )
         }
 
 
@@ -76,6 +77,7 @@ init endPointStr =
         , readyState = Closed
         , withDebug = False
         , withoutHeartbeat = False
+        , payload = []
         }
 
 
@@ -88,6 +90,14 @@ withLongPoll (Socket socket) =
             | transport = LongPoll
             , endPoint = websocketEndPointToLongPollEndPoint socket.endPoint
         }
+
+
+{-| withPayload
+-}
+withPayload : List ( String, String ) -> Socket msg -> Socket msg
+withPayload payload (Socket socket) =
+    Socket
+        { socket | payload = payload }
 
 
 {-| Joins a channel
@@ -194,7 +204,7 @@ update toExternalAppMsgFn msg (Socket socket) =
         LongPollTick _ ->
             case socket.readyState of
                 Open ->
-                    ( Socket { socket | readyState = Connecting }, Cmd.map toExternalAppMsgFn (LongPoll.poll socket.endPoint socket.longPollToken) )
+                    ( Socket { socket | readyState = Connecting }, Cmd.map toExternalAppMsgFn (LongPoll.poll socket.endPoint socket.payload socket.longPollToken) )
 
                 Connecting ->
                     ( Socket socket, Cmd.none )
@@ -203,7 +213,7 @@ update toExternalAppMsgFn msg (Socket socket) =
                     ( Socket socket, Cmd.none )
 
                 Closed ->
-                    ( Socket { socket | readyState = Connecting }, Cmd.map toExternalAppMsgFn (LongPoll.poll socket.endPoint socket.longPollToken) )
+                    ( Socket { socket | readyState = Connecting }, Cmd.map toExternalAppMsgFn (LongPoll.poll socket.endPoint socket.payload socket.longPollToken) )
 
         LongPollPolled (Ok longPollEvent) ->
             case longPollEvent.status of

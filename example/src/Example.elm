@@ -41,6 +41,7 @@ initSocket =
     endPoint
         |> Socket.init
         |> Socket.withLongPoll
+        |> Socket.withPayload [ ( "access_token", "super_secret_t0ken!!!" ) ]
 
 
 init : () -> ( Model, Cmd Msg )
