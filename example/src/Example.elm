@@ -72,6 +72,7 @@ type Msg
 
 channel =
     Channel.init "numbers:positive"
+        |> Channel.withPayload (Encode.object [ ( "initial_message", Encode.string "hello channel" ) ])
         |> Channel.onJoin JoinedChannel
         |> Channel.onJoinError FailedToJoinedChannel
         |> Channel.onError FailedToConnectChannel

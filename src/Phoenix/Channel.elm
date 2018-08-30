@@ -1,11 +1,11 @@
-module Phoenix.Channel exposing (Channel, init, setJoiningState, setClosedState, setJoinedState, setErroredState, isOngoing, isClosed, isJoined, isErrored, addChannel, updateChannel, updateChannelDict, findChannelWithRef, findChannel, on, onJoin, onJoinError, onError, onClose, topic, joinRef, receives, ons, payload)
+module Phoenix.Channel exposing (Channel, init, setJoiningState, setClosedState, setJoinedState, setErroredState, isOngoing, isClosed, isJoined, isErrored, addChannel, updateChannel, updateChannelDict, findChannelWithRef, findChannel, on, onJoin, onJoinError, onError, onClose, topic, joinRef, receives, ons, payload, withPayload)
 
 {-|
 
 
 # This module is keeping states related to channel
 
-@docs Channel, init, setJoiningState, setClosedState, setJoinedState, setErroredState, isOngoing, isClosed, isJoined, isErrored, addChannel, updateChannel, updateChannelDict, findChannelWithRef, findChannel, on, onJoin, onJoinError, onError, onClose, topic, joinRef, receives, ons, payload
+@docs Channel, init, setJoiningState, setClosedState, setJoinedState, setErroredState, isOngoing, isClosed, isJoined, isErrored, addChannel, updateChannel, updateChannelDict, findChannelWithRef, findChannel, on, onJoin, onJoinError, onError, onClose, topic, joinRef, receives, ons, payload, withPayload
 
 -}
 
@@ -48,6 +48,13 @@ init channelTopic =
         , receive = Dict.empty
         , payload = Encode.object []
         }
+
+
+{-| Includes payload during initializing the channel
+-}
+withPayload : Value -> Channel msg -> Channel msg
+withPayload payloadVal (Channel channel) =
+    Channel { channel | payload = payloadVal }
 
 
 {-| Sets the joining reference and state to Joining
