@@ -69,7 +69,9 @@ externalMsgs pushedEvents channels toExternalAppMsgFn events =
             Message.mapAll toExternalAppMsgFn
 
         msgs =
-            List.map (\e -> SocketHelper.mapExternalEvents pushedEvents channels e) events
+            events
+                |> List.reverse
+                |> List.map (\e -> SocketHelper.mapExternalEvents pushedEvents channels e)
     in
     msgs
         |> List.map (\m -> m |> Task.succeed |> Task.perform identity)
